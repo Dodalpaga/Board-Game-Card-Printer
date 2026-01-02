@@ -1,8 +1,7 @@
 'use client';
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   Upload,
-  Plus,
   Trash2,
   Copy,
   ImagePlus,
@@ -39,7 +38,7 @@ interface PageMargins {
 
 const A4_WIDTH_MM = 210;
 const A4_HEIGHT_MM = 297;
-const MM_PER_PX = 0.084666;
+const MM_PER_PX = 0.084666; // Approx 300 DPI: 25.4 mm / 300 ≈ 0.084666 mm/px
 
 export default function BoardGameCardManager() {
   const [rectos, setRectos] = useState<ImageFile[]>([]);
@@ -48,7 +47,6 @@ export default function BoardGameCardManager() {
   const [activeTab, setActiveTab] = useState<'upload' | 'associate' | 'layout'>(
     'upload'
   );
-  const [defaultVersoId, setDefaultVersoId] = useState<string>('');
   const [margins, setMargins] = useState<PageMargins>({
     top: 12.3,
     right: 12.3,
@@ -59,10 +57,6 @@ export default function BoardGameCardManager() {
   const [scale, setScale] = useState<number>(0.5);
   const [toasts, setToasts] = useState<string[]>([]);
   const previewContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (versos.length > 0 && !defaultVersoId) setDefaultVersoId(versos[0].id);
-  }, [versos, defaultVersoId]);
 
   const exportToPDF = async () => {
     const pdf = new jsPDF({
@@ -133,7 +127,6 @@ export default function BoardGameCardManager() {
       rectos: rectos,
       versos: versos,
       cards: cards,
-      defaultVersoId: defaultVersoId,
       margins: margins,
       cardSpacing: cardSpacing,
     };
@@ -173,7 +166,6 @@ export default function BoardGameCardManager() {
         setRectos(jsonData.rectos || []);
         setVersos(jsonData.versos || []);
         setCards(jsonData.cards || []);
-        setDefaultVersoId(jsonData.defaultVersoId || '');
         if (jsonData.margins) setMargins(jsonData.margins);
         if (jsonData.cardSpacing !== undefined)
           setCardSpacing(jsonData.cardSpacing);
@@ -252,40 +244,7 @@ export default function BoardGameCardManager() {
     } else {
       setVersos((prev) => prev.filter((img) => img.id !== id));
       setCards((prev) => prev.filter((card) => card.versoId !== id));
-      if (defaultVersoId === id && versos.length > 1) {
-        setDefaultVersoId(versos.find((v) => v.id !== id)?.id || '');
-      }
     }
-  };
-
-  const createCard = (rectoId: string, versoId: string) => {
-    if (!versoId) return;
-    const recto = rectos.find((r) => r.id === rectoId);
-    const verso = versos.find((v) => v.id === versoId);
-    if (!recto || !verso) return;
-
-    if (recto.width !== verso.width || recto.height !== verso.height) {
-      showToast(
-        '⚠️ Les dimensions du recto et du verso doivent être identiques !'
-      );
-      return;
-    }
-
-    const existingCard = cards.find(
-      (c) => c.rectoId === rectoId && c.versoId === versoId
-    );
-    if (existingCard) {
-      updateQuantity(existingCard.id, existingCard.quantity + 1);
-      return;
-    }
-
-    const newCard: Card = {
-      id: `card-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-      rectoId,
-      versoId,
-      quantity: 1,
-    };
-    setCards((prev) => [...prev, newCard]);
   };
 
   const changeVerso = (cardId: string, newVersoId: string) => {
@@ -378,8 +337,16 @@ export default function BoardGameCardManager() {
     ): boolean => {
       const { width, height } = getCardSizeInMm(card.rectoId);
 
-      for (let rowY = margins.top; rowY <= availableHeight; rowY += 1) {
-        for (let colX = margins.left; colX <= availableWidth; colX += 1) {
+      for (
+        let rowY = margins.top;
+        rowY <= availableHeight + height;
+        rowY += 1
+      ) {
+        for (
+          let colX = margins.left;
+          colX <= availableWidth + width;
+          colX += 1
+        ) {
           const fits = !pageCards.some((placed) => {
             const pSize = getCardSizeInMm(placed.card.rectoId);
             return !(
@@ -454,6 +421,7 @@ export default function BoardGameCardManager() {
       margins.bottom,
       margins.left,
       cardSpacing,
+      calculateCardsPerPage,
     ]
   );
 
@@ -585,6 +553,12 @@ export default function BoardGameCardManager() {
     </div>
   );
 
+  const [selectedRectoForNewCard, setSelectedRectoForNewCard] = useState<
+    string[]
+  >([]);
+  const [selectedVersoForNewCard, setSelectedVersoForNewCard] =
+    useState<string>('');
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 p-4 sm:p-8">
       <div className="max-w-7xl mx-auto">
@@ -652,7 +626,9 @@ export default function BoardGameCardManager() {
             ].map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() =>
+                  setActiveTab(tab.id as 'upload' | 'associate' | 'layout')
+                }
                 className={`flex-1 py-4 px-6 font-semibold transition-all ${
                   activeTab === tab.id
                     ? 'text-indigo-600 border-b-4 border-indigo-600 bg-indigo-50'
@@ -684,7 +660,9 @@ export default function BoardGameCardManager() {
                       className="hidden"
                       accept="image/*"
                       multiple
-                      onChange={(e) => handleFileUpload(e, type as any)}
+                      onChange={(e) =>
+                        handleFileUpload(e, type as 'recto' | 'verso')
+                      }
                     />
                   </label>
                   <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 lg:grid-cols-9 gap-6 mt-8">
@@ -693,7 +671,9 @@ export default function BoardGameCardManager() {
                         key={img.id}
                         img={img}
                         type={type}
-                        onDelete={() => deleteImage(img.id, type as any)}
+                        onDelete={() =>
+                          deleteImage(img.id, type as 'recto' | 'verso')
+                        }
                       />
                     ))}
                   </div>
@@ -718,73 +698,175 @@ export default function BoardGameCardManager() {
                 <div className="space-y-10">
                   <div className="bg-gradient-to-r from-indigo-100 to-purple-100 p-8 rounded-3xl">
                     <h3 className="text-xl font-bold text-indigo-900 mb-6">
-                      Créer une nouvelle carte
+                      Créer de nouvelles cartes
                     </h3>
-                    <div className="space-y-6">
-                      <div>
-                        <label className="block font-medium mb-3">
-                          Verso par défaut
-                        </label>
-                        <div className="flex gap-4 flex-wrap">
-                          {versos.map((v) => (
-                            <button
-                              key={v.id}
-                              onClick={() => setDefaultVersoId(v.id)}
-                              className={`relative ${
-                                defaultVersoId === v.id
-                                  ? 'ring-4 ring-indigo-600 scale-110'
-                                  : 'opacity-70'
-                              }`}
-                            >
-                              <div className="w-24 aspect-[2.5/3.5] rounded-xl overflow-hidden border-4 border-purple-400 shadow-md">
-                                <img
-                                  src={v.previewUrl}
-                                  alt=""
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              {defaultVersoId === v.id && (
-                                <div className="absolute -top-3 -right-3 bg-indigo-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-lg font-bold">
-                                  ✓
-                                </div>
-                              )}
-                            </button>
-                          ))}
-                        </div>
+
+                    {/* Liste des rectos non encore associés */}
+                    {getUnusedRectos().length === 0 ? (
+                      <div className="text-center py-12 text-gray-600">
+                        <AlertCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                        <p>Tous les rectos sont déjà associés à une carte.</p>
                       </div>
-                      <div>
-                        <label className="block font-medium mb-3">
-                          Sélectionner un recto ({getUnusedRectos().length}{' '}
-                          disponibles)
-                        </label>
-                        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-6">
-                          {getUnusedRectos().map((recto) => (
-                            <button
-                              key={recto.id}
-                              onClick={() =>
-                                createCard(recto.id, defaultVersoId)
+                    ) : (
+                      <>
+                        <div className="grid md:grid-cols-2 gap-8">
+                          <div>
+                            <label className="block font-medium mb-4 text-lg">
+                              1. Sélectionner un ou plusieurs Rectos (non
+                              associés)
+                            </label>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 max-h-96 overflow-y-auto p-4 bg-white rounded-xl border-2 border-indigo-200">
+                              {getUnusedRectos().map((recto) => (
+                                <button
+                                  key={recto.id}
+                                  onClick={() =>
+                                    setSelectedRectoForNewCard((prev) => {
+                                      if (prev.includes(recto.id)) {
+                                        return prev.filter(
+                                          (id) => id !== recto.id
+                                        );
+                                      }
+                                      return [...prev, recto.id];
+                                    })
+                                  }
+                                  className={`relative rounded-xl overflow-hidden border-4 transition-all ${
+                                    selectedRectoForNewCard.includes(recto.id)
+                                      ? 'border-indigo-600 ring-4 ring-indigo-300 scale-105 shadow-lg'
+                                      : 'border-gray-300 hover:border-indigo-400'
+                                  }`}
+                                >
+                                  <img
+                                    src={recto.previewUrl}
+                                    alt={recto.name}
+                                    className="w-full aspect-[2.5/3.5] object-cover"
+                                  />
+                                  {selectedRectoForNewCard.includes(
+                                    recto.id
+                                  ) && (
+                                    <div className="absolute inset-0 bg-indigo-500 bg-opacity-30 flex items-center justify-center">
+                                      <div className="bg-white text-indigo-700 rounded-full w-8 h-8 flex items-center justify-center font-bold text-xl">
+                                        ✓
+                                      </div>
+                                    </div>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                            <p className="mt-3 text-sm text-gray-600 text-center">
+                              {selectedRectoForNewCard.length} recto(s)
+                              sélectionné(s)
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block font-medium mb-4 text-lg">
+                              2. Choisir un Verso commun
+                            </label>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4">
+                              {versos.map((verso) => (
+                                <button
+                                  key={verso.id}
+                                  onClick={() =>
+                                    setSelectedVersoForNewCard(verso.id)
+                                  }
+                                  className={`relative rounded-xl overflow-hidden border-4 transition-all ${
+                                    selectedVersoForNewCard === verso.id
+                                      ? 'border-purple-600 ring-4 ring-purple-300 scale-105'
+                                      : 'border-gray-300 hover:border-purple-400'
+                                  }`}
+                                >
+                                  <img
+                                    src={verso.previewUrl}
+                                    alt={verso.name}
+                                    className="w-full aspect-[2.5/3.5] object-cover"
+                                  />
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-8 text-center">
+                          <button
+                            onClick={() => {
+                              if (
+                                selectedRectoForNewCard.length === 0 ||
+                                !selectedVersoForNewCard
+                              ) {
+                                showToast(
+                                  '⚠️ Veuillez sélectionner au moins un recto et un verso'
+                                );
+                                return;
                               }
-                              className="relative group"
-                              type="button"
-                            >
-                              <div className="relative overflow-hidden rounded-xl border-2 border-gray-200 hover:border-indigo-500 transition-all duration-200 shadow-sm bg-white">
-                                <img
-                                  src={recto.previewUrl}
-                                  alt={recto.name}
-                                  className="h-full object-cover"
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center transition-all duration-200">
-                                  <Plus className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                                </div>
-                              </div>
-                              <p className="text-xs text-gray-600 mt-1 truncate text-center">
-                                {recto.name}
-                              </p>
-                            </button>
-                          ))}
+
+                              const verso = versos.find(
+                                (v) => v.id === selectedVersoForNewCard
+                              );
+                              if (!verso) return;
+
+                              selectedRectoForNewCard.forEach((rectoId) => {
+                                const recto = rectos.find(
+                                  (r) => r.id === rectoId
+                                );
+                                if (!recto) return;
+
+                                // Vérification des dimensions
+                                if (
+                                  recto.width !== verso.width ||
+                                  recto.height !== verso.height
+                                ) {
+                                  showToast(
+                                    `⚠️ Dimensions incompatibles avec ${recto.name}`
+                                  );
+                                  return;
+                                }
+
+                                // Si la combinaison existe déjà → on incrémente la quantité
+                                const existingCard = cards.find(
+                                  (c) =>
+                                    c.rectoId === rectoId &&
+                                    c.versoId === selectedVersoForNewCard
+                                );
+                                if (existingCard) {
+                                  updateQuantity(
+                                    existingCard.id,
+                                    existingCard.quantity + 1
+                                  );
+                                } else {
+                                  const newCard: Card = {
+                                    id: `card-${Date.now()}-${Math.random()
+                                      .toString(36)
+                                      .slice(2)}`,
+                                    rectoId,
+                                    versoId: selectedVersoForNewCard,
+                                    quantity: 1,
+                                  };
+                                  setCards((prev) => [...prev, newCard]);
+                                }
+                              });
+
+                              // Réinitialiser la sélection
+                              setSelectedRectoForNewCard([]);
+                              setSelectedVersoForNewCard('');
+                              showToast(
+                                `✅ ${selectedRectoForNewCard.length} carte(s) créée(s) !`
+                              );
+                            }}
+                            disabled={
+                              selectedRectoForNewCard.length === 0 ||
+                              !selectedVersoForNewCard
+                            }
+                            className="px-10 py-4 text-xl font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl shadow-lg hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                          >
+                            Créer{' '}
+                            {selectedRectoForNewCard.length > 0
+                              ? selectedRectoForNewCard.length
+                              : ''}{' '}
+                            carte(s)
+                          </button>
                         </div>
-                      </div>
-                    </div>
+                      </>
+                    )}
                   </div>
 
                   <div>
@@ -889,7 +971,7 @@ export default function BoardGameCardManager() {
               {cards.length === 0 ? (
                 <div className="text-center py-20 text-gray-500">
                   <AlertCircle className="w-24 h-24 mx-auto mb-6 text-gray-400" />
-                  <p className="text-lg">Créez d'abord des cartes</p>
+                  <p className="text-lg">Créez d&apos;abord des cartes</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-4 gap-8 h-[calc(100vh-400px)] min-h-[600px]">
@@ -1040,6 +1122,15 @@ export default function BoardGameCardManager() {
                     <h3 className="text-xl font-bold text-indigo-900 mb-6 text-center sticky top-0 bg-gray-100 pb-4 z-10">
                       Aperçu des pages A4 (échelle 1:{scale})
                     </h3>
+                    <div className="flex justify-center mb-8">
+                      <button
+                        onClick={exportToPDF}
+                        className="flex items-center justify-center gap-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-5 rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all font-bold text-xl shadow-2xl"
+                      >
+                        <Printer className="w-8 h-8" />
+                        Exporter en PDF
+                      </button>
+                    </div>
                     <div
                       className="grid gap-8"
                       style={{
@@ -1050,13 +1141,6 @@ export default function BoardGameCardManager() {
                         justifyItems: 'center',
                       }}
                     >
-                      <button
-                        onClick={exportToPDF}
-                        className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 py-4 rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all font-bold text-lg shadow-lg"
-                      >
-                        <Printer className="w-6 h-6" />
-                        Exporter en PDF
-                      </button>
                       {Array.from({ length: calculatePages() }, (_, i) => (
                         <React.Fragment key={i}>
                           {renderPageLayout(i, 'recto')}
