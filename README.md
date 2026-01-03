@@ -1,116 +1,122 @@
 # 🎲 Gestionnaire de Cartes pour Jeux de Société
 
-Un outil web moderne et intuitif pour préparer vos cartes de jeu de société à l'impression professionnelle ou maison.  
-Idéal pour les créateurs de prototypes, les éditeurs indépendants ou les passionnés de print-and-play.
+Un outil web pour préparer vos cartes de jeu de société à l'impression. Idéal pour les créateurs de prototypes, éditeurs indépendants et passionnés de print-and-play.
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)](https://reactjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
+
+You can try the [Démo](https://dodalpaga.github.io/Board-Game-Card-Printer/) at https://dodalpaga.github.io/Board-Game-Card-Printer
 
 ## ✨ Fonctionnalités
 
-- **Upload séparé** des faces recto et verso de vos cartes
-- **Association flexible** : associez un verso commun à plusieurs rectos en un clic
-- **Vérification automatique** des dimensions (recto et verso doivent avoir la même taille)
-- **Gestion des quantités** par carte et duplication rapide
-- **Mise en page optimisée** sur feuilles A4 avec :
-  - Marges personnalisables (uniformes ou individuelles)
-  - Espacement entre cartes réglable
-  - Algorithme de placement intelligent (bin packing simplifié)
-- **Aperçu en temps réel** des pages recto et verso (avec zoom)
-- **Export PDF** prêt à imprimer (recto et verso alignés pour impression recto-verso parfaite)
-- **Sauvegarde / Chargement de projet** au format JSON
-- Interface entièrement responsive et agréable
+- **Upload et gestion** des images recto/verso avec vérification automatique des dimensions
+- **Association flexible** : associez plusieurs rectos à un verso commun
+- **Mise en page optimisée** sur A4 avec algorithme de placement intelligent
+- **Aperçu en temps réel** avec zoom et ajustement des marges
+- **Export PDF** prêt à imprimer (recto-verso aligné)
+- **Sauvegarde/chargement** de projet au format JSON
 
-## 🖥️ Technologies utilisées
+Tout est fait côté client !
 
-- **Next.js 14** (App Router)
-- **React 18**
-- **TypeScript**
-- **Tailwind CSS**
-- **Lucide React** (icônes)
-- **jsPDF** (génération PDF côté client)
-
-## 🚀 Démarrage rapide
-
-### Prérequis
-
-- Node.js ≥ 18
-- npm, yarn ou pnpm
-
-### Installation
+## 🚀 Installation
 
 ```bash
 git clone https://github.com/votre-username/gestionnaire-cartes-jeu.git
 cd gestionnaire-cartes-jeu
 
-# Avec npm
 npm install
 npm run dev
-
-# Ou avec pnpm
-pnpm install
-pnpm dev
-
-# Ou avec yarn
-yarn install
-yarn dev
 ```
 
-Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur.
+Ouvrez [http://localhost:3000](http://localhost:3000)
 
-## 📖 Guide d'utilisation
+## 📁 Structure du projet
 
-### 1. Upload des images
+```
+src/components/BoardGameCardManager/
+├── index.tsx                 # Composant principal
+├── types.ts                  # Interfaces TypeScript
+├── constants.ts              # Configuration
+├── utils.ts                  # Fonctions utilitaires
+├── hooks/
+│   └── useCardLayout.ts      # Algorithme de placement
+└── components/
+    ├── ImageCard.tsx         # Carte image
+    ├── Toast.tsx             # Notifications
+    ├── StatsPanel.tsx        # Statistiques
+    ├── UploadTab.tsx         # Interface d'upload
+    ├── AssociateTab.tsx      # Gestion des associations
+    └── LayoutTab.tsx         # Mise en page et export
+```
 
-- Allez dans l'onglet **📤 Upload**
-- Chargez vos images de recto dans la section "Rectos"
-- Chargez vos images de verso dans la section "Versos"
-- Formats supportés : JPG, PNG, WebP, etc.
+### 🎯 Architecture modulaire
 
-> Astuce : préparez vos images à 300 DPI pour une impression optimale.
+| Avant                    | Après                                       |
+| ------------------------ | ------------------------------------------- |
+| 1 fichier de 800+ lignes | 11 fichiers modulaires (~90 lignes/fichier) |
+| Difficile à maintenir    | Composants réutilisables et testables       |
 
-### 2. Association recto/verso
+### 🧩 Modules principaux
 
-- Passez à l'onglet **🔗 Association**
-- Sélectionnez un ou plusieurs rectos non utilisés
-- Choisissez un verso commun
-- Cliquez sur "Créer X carte(s)"
-- Ajustez les quantités, changez de verso ou dupliquez les cartes existantes si besoin
+- **`types.ts`** : Définitions TypeScript (ImageFile, Card, PageMargins, LayoutData)
+- **`constants.ts`** : Dimensions A4, conversion DPI, valeurs par défaut
+- **`utils.ts`** : Fonctions pures (createThumbnail, getCardSizeInMm, getTotalCards)
+- **`useCardLayout.ts`** : Hook memoized pour le calcul de placement (bin-packing)
+- **`UploadTab`** : Gestion de l'upload avec génération de miniatures optimisées
+- **`AssociateTab`** : Création et gestion des associations recto/verso
+- **`LayoutTab`** : Aperçu en temps réel et export PDF via jsPDF
 
-### 3. Préparation de l'impression
+## 📦 Dépendances
 
-- Allez dans l'onglet **🖨️ Impression**
-- Ajustez :
-  - Les marges (en mm)
-  - L'espacement entre cartes
-  - Le zoom d'aperçu
-- Visualisez le placement automatique des cartes sur chaque page A4
-- Cliquez sur **Exporter en PDF** quand tout est prêt
+```json
+{
+  "dependencies": {
+    "react": "^18.0.0",
+    "next": "^14.0.0",
+    "typescript": "^5.0.0",
+    "lucide-react": "^0.263.1", // Icônes
+    "jspdf": "^2.5.1" // Génération PDF
+  }
+}
+```
 
-### 4. Sauvegarde du projet
+**Bundle size** : ~200 KB (gzipped) ✅
 
-- Boutons en haut de page :
-  - **Exporter le projet** → sauvegarde un fichier `.json`
-  - **Importer un projet** → restaure tout votre travail
+## 📖 Utilisation
 
-## 🖨️ Conseils pour une impression parfaite
+1. **Upload** : Ajoutez vos images recto et verso (JPG, PNG, WebP)
+2. **Association** : Sélectionnez les rectos et associez-les à un verso commun
+3. **Mise en page** : Ajustez les marges, l'espacement et visualisez le résultat
+4. **Export** : Téléchargez le PDF prêt à imprimer en recto-verso
 
-1. Utilisez du papier cartonné 250–300 g/m²
-2. Imprimez en **recto-verso bord court** (ou "flip on short edge")
-3. Vérifiez l'alignement avec une page test avant grande série
-4. Pour une découpe précise : laissez un fond perdu (bleed) de 3 mm si possible
+## 🖨️ Impression
+
+- Papier cartonné **250-300 g/m²**
+- Mode **recto-verso bord court**
+- Images préparées à **300 DPI**
+- Marges recommandées : **12-15 mm**
 
 ## 🤝 Contribution
 
-Les contributions sont les bienvenues !  
-N'hésitez pas à ouvrir une issue ou une pull request pour :
+Les contributions sont bienvenues ! N'hésitez pas à :
 
-- Corriger un bug
-- Proposer une nouvelle fonctionnalité
-- Améliorer l'algorithme de placement
-- Ajouter des tailles de page (Letter, custom...)
+- Signaler un bug via les [Issues](https://github.com/votre-username/gestionnaire-cartes-jeu/issues)
+- Proposer une fonctionnalité
+- Soumettre une Pull Request
+
+### Idées de contributions
+
+- 🌍 Internationalisation (i18n)
+- 📄 Support Letter US / formats custom
+- 🎨 Mode sombre
+- 🧪 Tests unitaires
+- 📱 Version PWA
 
 ## 📄 Licence
 
-MIT License – libre d'utilisation, modification et distribution.
+MIT License - Libre d'utilisation, modification et distribution.
 
 ---
 
-**Profitez bien de vos créations !** 🎲✂️🖨️
+⭐ **N'oubliez pas de mettre une étoile si ce projet vous aide !** ⭐
