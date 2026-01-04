@@ -1,6 +1,6 @@
 // utils.ts
 import { ImageFile, Card } from './types';
-import { MM_PER_PX } from './constants';
+import { getMmPerPx } from './constants';
 
 export const createThumbnail = (
   img: HTMLImageElement,
@@ -22,11 +22,13 @@ export const createThumbnail = (
 
 export const getCardSizeInMm = (
   rectoId: string,
-  rectos: ImageFile[]
+  rectos: ImageFile[],
+  dpi: number = 72
 ): { width: number; height: number } => {
   const recto = rectos.find((r) => r.id === rectoId);
   if (!recto) return { width: 63, height: 88 };
-  return { width: recto.width * MM_PER_PX, height: recto.height * MM_PER_PX };
+  const mmPerPx = getMmPerPx(dpi);
+  return { width: recto.width * mmPerPx, height: recto.height * mmPerPx };
 };
 
 export const getTotalCards = (cards: Card[]): number => {

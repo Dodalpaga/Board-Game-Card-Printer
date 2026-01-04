@@ -11,6 +11,7 @@ import {
   DEFAULT_MARGINS,
   DEFAULT_CARD_SPACING,
   DEFAULT_SCALE,
+  DEFAULT_DPI,
 } from './constants';
 
 // Import utils
@@ -34,10 +35,11 @@ export default function BoardGameCardManager() {
   const [margins, setMargins] = useState<PageMargins>(DEFAULT_MARGINS);
   const [cardSpacing, setCardSpacing] = useState<number>(DEFAULT_CARD_SPACING);
   const [scale, setScale] = useState<number>(DEFAULT_SCALE);
+  const [dpi, setDpi] = useState<number>(DEFAULT_DPI);
   const [toasts, setToasts] = useState<string[]>([]);
 
   // Custom hook for layout calculation
-  const layoutData = useCardLayout(cards, rectos, margins, cardSpacing);
+  const layoutData = useCardLayout(cards, rectos, margins, cardSpacing, dpi);
 
   // Toast notification
   const showToast = (message: string) => {
@@ -66,6 +68,7 @@ export default function BoardGameCardManager() {
       cards,
       margins,
       cardSpacing,
+      dpi,
     };
 
     const dataStr = JSON.stringify(projectData, null, 2);
@@ -106,6 +109,7 @@ export default function BoardGameCardManager() {
         if (jsonData.margins) setMargins(jsonData.margins);
         if (jsonData.cardSpacing !== undefined)
           setCardSpacing(jsonData.cardSpacing);
+        if (jsonData.dpi !== undefined) setDpi(jsonData.dpi);
 
         showToast('✅ Projet importé avec succès !');
       } catch (error) {
@@ -235,6 +239,8 @@ export default function BoardGameCardManager() {
               setCardSpacing={setCardSpacing}
               scale={scale}
               setScale={setScale}
+              dpi={dpi}
+              setDpi={setDpi}
               layoutData={layoutData}
               showToast={showToast}
             />

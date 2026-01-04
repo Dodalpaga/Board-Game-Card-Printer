@@ -8,7 +8,8 @@ export const useCardLayout = (
   cards: Card[],
   rectos: ImageFile[],
   margins: PageMargins,
-  cardSpacing: number
+  cardSpacing: number,
+  dpi: number
 ): LayoutData => {
   return useMemo(() => {
     if (cards.length === 0) return { perPage: 0, layout: [] };
@@ -24,8 +25,8 @@ export const useCardLayout = (
     });
 
     allCardInstances.sort((a, b) => {
-      const sizeA = getCardSizeInMm(a.card.rectoId, rectos);
-      const sizeB = getCardSizeInMm(b.card.rectoId, rectos);
+      const sizeA = getCardSizeInMm(a.card.rectoId, rectos, dpi);
+      const sizeB = getCardSizeInMm(b.card.rectoId, rectos, dpi);
       return sizeB.height - sizeA.height;
     });
 
@@ -36,7 +37,7 @@ export const useCardLayout = (
       card: Card,
       pageCards: { card: Card; x: number; y: number }[]
     ): boolean => {
-      const { width, height } = getCardSizeInMm(card.rectoId, rectos);
+      const { width, height } = getCardSizeInMm(card.rectoId, rectos, dpi);
 
       for (
         let rowY = margins.top;
@@ -49,7 +50,7 @@ export const useCardLayout = (
           colX += 1
         ) {
           const fits = !pageCards.some((placed) => {
-            const pSize = getCardSizeInMm(placed.card.rectoId, rectos);
+            const pSize = getCardSizeInMm(placed.card.rectoId, rectos, dpi);
             return !(
               colX + width + cardSpacing <= placed.x ||
               colX - cardSpacing >= placed.x + pSize.width ||
@@ -102,5 +103,5 @@ export const useCardLayout = (
     );
 
     return { perPage, layout };
-  }, [cards, rectos, margins, cardSpacing]);
+  }, [cards, rectos, margins, cardSpacing, dpi]);
 };

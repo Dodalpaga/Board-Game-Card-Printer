@@ -17,6 +17,8 @@ interface LayoutTabProps {
   setCardSpacing: React.Dispatch<React.SetStateAction<number>>;
   scale: number;
   setScale: React.Dispatch<React.SetStateAction<number>>;
+  dpi: number;
+  setDpi: React.Dispatch<React.SetStateAction<number>>;
   layoutData: LayoutData;
   showToast: (message: string) => void;
 }
@@ -31,6 +33,8 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
   setCardSpacing,
   scale,
   setScale,
+  dpi,
+  setDpi,
   layoutData,
   showToast,
 }) => {
@@ -79,7 +83,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
       for (const item of pageLayout) {
         const recto = getImage(item.card.rectoId, 'recto');
         if (recto) {
-          const cardMm = getCardSizeInMm(item.card.rectoId, rectos);
+          const cardMm = getCardSizeInMm(item.card.rectoId, rectos, dpi);
           pdf.addImage(
             recto.url,
             'JPEG',
@@ -97,7 +101,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
       for (const item of pageLayout) {
         const verso = getImage(item.card.versoId, 'verso');
         if (verso) {
-          const cardMm = getCardSizeInMm(item.card.rectoId, rectos);
+          const cardMm = getCardSizeInMm(item.card.rectoId, rectos, dpi);
           const x =
             A4_WIDTH_MM -
             margins.right -
@@ -159,7 +163,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
             const recto = getImage(card.rectoId, 'recto');
             if (!recto) return null;
 
-            const cardMm = getCardSizeInMm(card.rectoId, rectos);
+            const cardMm = getCardSizeInMm(card.rectoId, rectos, dpi);
             const cardW = cardMm.width / scale;
             const cardH = cardMm.height / scale;
 
@@ -191,7 +195,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
                     src={image.layoutPreviewUrl}
                     alt=""
                     className="w-full h-full object-cover"
-                    style={{ imageRendering: 'pixelated' }}
+                    style={{ imageRendering: 'auto' }}
                   />
                 )}
               </div>
@@ -261,6 +265,46 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
               >
                 Ajuster à la largeur
               </button>
+            </div>
+          </div>
+
+          {/* DPI Settings */}
+          <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-6 rounded-2xl">
+            <h3 className="text-lg font-bold text-indigo-900 mb-4">
+              📏 DPI des Images
+            </h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Résolution (DPI)
+                </label>
+                <input
+                  type="number"
+                  step="1"
+                  min="50"
+                  max="600"
+                  value={dpi}
+                  onChange={(e) => setDpi(parseFloat(e.target.value) || 72)}
+                  className="w-full px-3 py-2 border-2 border-orange-300 rounded-lg text-center font-semibold"
+                />
+                <p className="text-xs text-gray-600 mt-2">
+                  72 DPI = écran / 300 DPI = impression
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setDpi(72)}
+                  className="flex-1 bg-orange-600 text-white px-3 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm font-semibold"
+                >
+                  72 DPI
+                </button>
+                <button
+                  onClick={() => setDpi(300)}
+                  className="flex-1 bg-amber-600 text-white px-3 py-2 rounded-lg hover:bg-amber-700 transition-colors text-sm font-semibold"
+                >
+                  300 DPI
+                </button>
+              </div>
             </div>
           </div>
 
