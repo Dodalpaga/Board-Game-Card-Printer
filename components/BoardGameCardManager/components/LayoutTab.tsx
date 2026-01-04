@@ -50,8 +50,15 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
     return Math.max(...layoutData.layout.map((item) => item.page), 0) + 1;
   };
 
-  const setUniformMargin = (value: number) =>
-    setMargins({ top: value, right: value, bottom: value, left: value });
+  const setUniformMargin = (value: number) => {
+    const validValue = Math.max(0.1, value);
+    setMargins({
+      top: validValue,
+      right: validValue,
+      bottom: validValue,
+      left: validValue,
+    });
+  };
 
   const fitToContainer = () => {
     if (!previewContainerRef.current) return;
@@ -321,9 +328,10 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
                 <input
                   type="number"
                   step="0.1"
-                  placeholder="12.3"
+                  min="0.1"
+                  placeholder="5"
                   onChange={(e) =>
-                    setUniformMargin(parseFloat(e.target.value) || 12.3)
+                    setUniformMargin(parseFloat(e.target.value) || 5)
                   }
                   className="w-full px-3 py-2 border-2 border-indigo-300 rounded-lg text-center font-semibold"
                 />
@@ -336,13 +344,15 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
                   <input
                     type="number"
                     step="0.1"
+                    min="0.1"
                     value={margins[side as keyof PageMargins]}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value);
                       setMargins((p) => ({
                         ...p,
-                        [side]: parseFloat(e.target.value) || 12.3,
-                      }))
-                    }
+                        [side]: Math.max(0.1, value || 0.1),
+                      }));
+                    }}
                     className="w-full px-3 py-2 border-2 border-indigo-300 rounded-lg text-center font-semibold"
                   />
                 </div>
