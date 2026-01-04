@@ -39,6 +39,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
   showToast,
 }) => {
   const previewContainerRef = useRef<HTMLDivElement>(null);
+  const [dpiInput, setDpiInput] = React.useState(dpi.toString());
 
   const getImage = (id: string, type: 'recto' | 'verso') =>
     type === 'recto'
@@ -290,28 +291,25 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
                   step="1"
                   min="50"
                   max="600"
-                  value={dpi}
-                  onChange={(e) => setDpi(parseFloat(e.target.value) || 72)}
+                  value={dpiInput}
+                  onChange={(e) => setDpiInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setDpi(parseFloat(dpiInput) || 72);
+                    }
+                  }}
                   className="w-full px-3 py-2 border-2 border-orange-300 rounded-lg text-center font-semibold"
                 />
                 <p className="text-xs text-gray-600 mt-2">
                   72 DPI = écran / 300 DPI = impression
                 </p>
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setDpi(72)}
-                  className="flex-1 bg-orange-600 text-white px-3 py-2 rounded-lg hover:bg-orange-700 transition-colors text-sm font-semibold"
-                >
-                  72 DPI
-                </button>
-                <button
-                  onClick={() => setDpi(300)}
-                  className="flex-1 bg-amber-600 text-white px-3 py-2 rounded-lg hover:bg-amber-700 transition-colors text-sm font-semibold"
-                >
-                  300 DPI
-                </button>
-              </div>
+              <button
+                onClick={() => setDpi(parseFloat(dpiInput) || 72)}
+                className="w-full bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition-colors font-semibold"
+              >
+                Appliquer
+              </button>
             </div>
           </div>
 
