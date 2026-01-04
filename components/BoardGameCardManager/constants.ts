@@ -15,4 +15,4 @@ export const DEFAULT_DPI = 72;
 
 // Calculate mm per pixel based on DPI
 // Formula: 25.4 mm per inch ÷ DPI
-export const getMmPerPx = (dpi: number): number => 25.4 / dpi;
+export const getMmPerPx = (pixelsPerCm: number): number => 10 / pixelsPerCm;
