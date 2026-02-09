@@ -1,6 +1,6 @@
 // components/Toast.tsx
 import React from 'react';
-import { AlertCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle, XCircle } from 'lucide-react';
 
 interface ToastProps {
   messages: string[];
@@ -9,15 +9,23 @@ interface ToastProps {
 export const Toast: React.FC<ToastProps> = ({ messages }) => {
   if (messages.length === 0) return null;
 
+  const getIcon = (message: string) => {
+    if (message.startsWith('✅'))
+      return <CheckCircle className="w-5 h-5 text-green-600" />;
+    if (message.startsWith('❌'))
+      return <XCircle className="w-5 h-5 text-red-600" />;
+    return <AlertCircle className="w-5 h-5 text-amber-600" />;
+  };
+
   return (
-    <div className="fixed bottom-6 right-6 space-y-3 z-50">
+    <div className="fixed bottom-6 right-6 space-y-2 z-50 max-w-sm">
       {messages.map((msg, i) => (
         <div
           key={i}
-          className="bg-indigo-600 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-pulse"
+          className="bg-white border border-gray-200 shadow-lg px-4 py-3 rounded-lg flex items-start gap-3 animate-in slide-in-from-bottom-5 duration-300"
         >
-          <AlertCircle className="w-6 h-6" />
-          <span className="font-semibold">{msg}</span>
+          {getIcon(msg)}
+          <span className="text-sm text-gray-900 flex-1">{msg}</span>
         </div>
       ))}
     </div>

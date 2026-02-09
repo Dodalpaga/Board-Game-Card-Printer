@@ -27,7 +27,6 @@ export const metadata: Metadata = {
   authors: [{ name: 'Dorian VOYDIE' }],
   creator: 'Dorian VOYDIE',
 
-  // Open Graph (Facebook, LinkedIn)
   openGraph: {
     type: 'website',
     locale: 'fr_FR',
@@ -37,7 +36,7 @@ export const metadata: Metadata = {
     siteName: 'Card Manager',
     images: [
       {
-        url: '/og-image.png', // Créez cette image (1200x630px)
+        url: '/og-image.png',
         width: 1200,
         height: 630,
         alt: 'Gestionnaire de Cartes',
@@ -45,7 +44,6 @@ export const metadata: Metadata = {
     ],
   },
 
-  // Favicon et icônes
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -57,14 +55,12 @@ export const metadata: Metadata = {
     ],
   },
 
-  // Manifest pour PWA (optionnel)
   manifest: '/manifest.json',
 
-  // Métadonnées additionnelles
   viewport: {
     width: 'device-width',
     initialScale: 1,
-    maximumScale: 1,
+    maximumScale: 5,
   },
   robots: {
     index: true,
@@ -86,7 +82,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr">
-      <meta name="apple-mobile-web-app-title" content="CardPrinter" />
+      <head>
+        <meta name="apple-mobile-web-app-title" content="CardPrinter" />
+        <meta name="theme-color" content="#ffffff" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

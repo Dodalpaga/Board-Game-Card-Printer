@@ -1,11 +1,10 @@
 // components/LayoutTab.tsx
 import React, { useRef } from 'react';
-import { Printer, AlertCircle } from 'lucide-react';
+import { Printer, AlertCircle, ZoomIn, ZoomOut } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { ImageFile, Card, PageMargins, LayoutData } from '../types';
 import { A4_WIDTH_MM, A4_HEIGHT_MM } from '../constants';
 import { getCardSizeInMm, getTotalCards } from '../utils';
-import { StatsPanel } from './StatsPanel';
 
 interface LayoutTabProps {
   cards: Card[];
@@ -51,16 +50,6 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
     return Math.max(...layoutData.layout.map((item) => item.page), 0) + 1;
   };
 
-  const setUniformMargin = (value: number) => {
-    const validValue = Math.max(0.1, value);
-    setMargins({
-      top: validValue,
-      right: validValue,
-      bottom: validValue,
-      left: validValue,
-    });
-  };
-
   const fitToContainer = () => {
     if (!previewContainerRef.current) return;
     const containerWidth = previewContainerRef.current.clientWidth - 64;
@@ -81,7 +70,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
 
     for (let pageIndex = 0; pageIndex < totalPages; pageIndex++) {
       const pageLayout = layoutData.layout.filter(
-        (item) => item.page === pageIndex
+        (item) => item.page === pageIndex,
       );
 
       // Recto page
@@ -98,7 +87,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
             item.x,
             item.y,
             cardMm.width,
-            cardMm.height
+            cardMm.height,
           );
         }
       }
@@ -121,7 +110,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
             x,
             item.y,
             cardMm.width,
-            cardMm.height
+            cardMm.height,
           );
         }
       }
@@ -133,7 +122,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
 
   const renderPageLayout = (pageIndex: number, type: 'recto' | 'verso') => {
     const pageLayout = layoutData.layout.filter(
-      (item) => item.page === pageIndex
+      (item) => item.page === pageIndex,
     );
     const pageWidth = A4_WIDTH_MM / scale;
     const pageHeight = A4_HEIGHT_MM / scale;
@@ -145,19 +134,17 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
     };
 
     return (
-      <div className="relative" style={{ marginTop: '32px' }}>
-        <div className="absolute -top-8 left-0 bg-indigo-600 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-md">
-          Page {pageIndex + 1} / {calculatePages()} -{' '}
-          {type === 'recto' ? 'Recto' : 'Verso'}
+      <div className="relative mb-8">
+        <div className="absolute -top-6 left-0 bg-gray-900 text-white px-3 py-1 rounded text-xs font-medium">
+          Page {pageIndex + 1} — {type === 'recto' ? 'Recto' : 'Verso'}
         </div>
 
         <div
-          className="bg-white shadow-2xl relative"
+          className="bg-white shadow-lg relative border border-gray-200"
           style={{ width: `${pageWidth}px`, height: `${pageHeight}px` }}
         >
-          <div className="absolute inset-0 border-4 border-gray-400 rounded-sm"></div>
           <div
-            className="absolute border-2 border-red-500 border-dashed pointer-events-none"
+            className="absolute border border-dashed border-gray-400 pointer-events-none"
             style={{
               top: `${scaledMargins.top}px`,
               left: `${scaledMargins.left}px`,
@@ -190,7 +177,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
             return (
               <div
                 key={`${pageIndex}-${card.id}-${idx}`}
-                className="absolute overflow-hidden border border-red-300"
+                className="absolute overflow-hidden border border-gray-300"
                 style={{
                   left: `${x}px`,
                   top: `${y}px`,
@@ -223,180 +210,236 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
     );
   }
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-8">
-        <h2 className="text-2xl font-bold text-indigo-900 flex items-center">
-          <Printer className="w-8 h-8 mr-3" />
-          Mise en page pour impression
-        </h2>
+  const totalPages = calculatePages();
+  const totalSheets = totalPages * 2;
 
+  return (
+    <div className="flex h-[calc(100vh-280px)] min-h-[700px] gap-6">
+      {/* Left Sidebar - Controls */}
+      <div className="w-72 flex-shrink-0 overflow-y-auto space-y-4">
+        {/* Export Button */}
         <button
           onClick={exportToPDF}
-          className="flex items-center justify-center gap-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-8 py-5 rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all font-bold text-xl shadow-2xl cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm"
         >
-          <Printer className="w-8 h-8" />
+          <Printer className="w-5 h-5" />
           Exporter en PDF
         </button>
-      </div>
 
-      <div className="grid grid-cols-4 gap-8 h-[calc(100vh-400px)] min-h-[600px]">
-        {/* Left Panel - Controls */}
-        <div className="col-span-1 space-y-6 overflow-y-auto pr-4">
-          {/* Zoom Controls */}
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-2xl">
-            <h3 className="text-lg font-bold text-indigo-900 mb-4">🔍 Zoom</h3>
-            <div className="space-y-4">
-              <div>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  max="2"
-                  value={scale}
-                  onChange={(e) => setScale(parseFloat(e.target.value) || 0.5)}
-                  className="w-full px-3 py-2 border-2 border-purple-300 rounded-lg text-center font-semibold"
-                />
-                <input
-                  type="range"
-                  min="0.1"
-                  max="2"
-                  step="0.1"
-                  value={scale}
-                  onChange={(e) => setScale(parseFloat(e.target.value))}
-                  className="w-full mt-3"
-                />
-              </div>
-              <button
-                onClick={fitToContainer}
-                className="w-full flex items-center justify-center gap-2 bg-purple-600 text-white px-4 py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold"
-              >
-                Ajuster à la largeur
-              </button>
+        {/* Statistics */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">
+            Statistiques
+          </h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Cartes / page</span>
+              <span className="font-semibold text-gray-900">
+                {layoutData.perPage}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Total cartes</span>
+              <span className="font-semibold text-gray-900">
+                {getTotalCards(cards)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Pages</span>
+              <span className="font-semibold text-gray-900">{totalPages}</span>
+            </div>
+            <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+              <span className="text-gray-600">Feuilles A4</span>
+              <span className="font-semibold text-indigo-600">
+                {totalSheets}
+              </span>
             </div>
           </div>
+        </div>
 
-          {/* DPI Settings */}
-          <div className="bg-gradient-to-r from-orange-50 to-amber-50 p-6 rounded-2xl">
-            <h3 className="text-lg font-bold text-indigo-900 mb-4">
-              📏 DPI des Images
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Résolution (DPI)
-                </label>
-                <input
-                  type="number"
-                  step="1"
-                  min="50"
-                  max="600"
-                  value={dpiInput}
-                  onChange={(e) => setDpiInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      setDpi(parseFloat(dpiInput) || 72);
-                    }
-                  }}
-                  className="w-full px-3 py-2 border-2 border-orange-300 rounded-lg text-center font-semibold"
-                />
-                <p className="text-xs text-gray-600 mt-2">
-                  72 DPI = écran / 300 DPI = impression
-                </p>
-              </div>
+        {/* Zoom Controls */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Zoom</h3>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setDpi(parseFloat(dpiInput) || 72)}
-                className="w-full bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition-colors font-semibold"
+                onClick={() => setScale(Math.max(0.1, scale - 0.1))}
+                className="p-2 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
               >
-                Appliquer
+                <ZoomOut className="w-4 h-4 text-gray-700" />
+              </button>
+              <input
+                type="number"
+                step="0.1"
+                min="0.1"
+                max="2"
+                value={scale}
+                onChange={(e) => setScale(parseFloat(e.target.value) || 0.5)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-center font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+              <button
+                onClick={() => setScale(Math.min(2, scale + 0.1))}
+                className="p-2 border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+              >
+                <ZoomIn className="w-4 h-4 text-gray-700" />
               </button>
             </div>
+            <input
+              type="range"
+              min="0.1"
+              max="2"
+              step="0.1"
+              value={scale}
+              onChange={(e) => setScale(parseFloat(e.target.value))}
+              className="w-full"
+            />
+            <button
+              onClick={fitToContainer}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded hover:bg-gray-50 transition-colors font-medium text-gray-700"
+            >
+              Ajuster à la largeur
+            </button>
           </div>
+        </div>
 
-          {/* Margin Controls */}
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl">
-            <h3 className="text-lg font-bold text-indigo-900 mb-4">
-              Marges A4 (mm)
-            </h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Uniforme
-                </label>
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  placeholder="5"
-                  onChange={(e) =>
-                    setUniformMargin(parseFloat(e.target.value) || 5)
+        {/* DPI Settings */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">
+            Résolution
+          </h3>
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                step="1"
+                min="50"
+                max="600"
+                value={dpiInput}
+                onChange={(e) => setDpiInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setDpi(parseFloat(dpiInput) || 72);
                   }
-                  className="w-full px-3 py-2 border-2 border-indigo-300 rounded-lg text-center font-semibold"
-                />
-              </div>
-              {['top', 'right', 'bottom', 'left'].map((side) => (
-                <div key={side}>
-                  <label className="block text-sm font-medium mb-2 capitalize">
-                    {side}
+                }}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded text-center font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+              <span className="text-sm text-gray-600 font-medium">DPI</span>
+            </div>
+            <button
+              onClick={() => setDpi(parseFloat(dpiInput) || 72)}
+              className="w-full px-3 py-2 text-sm bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition-colors font-medium text-gray-900"
+            >
+              Appliquer
+            </button>
+            <p className="text-xs text-gray-500">
+              72 DPI = écran • 300 DPI = impression
+            </p>
+          </div>
+        </div>
+
+        {/* Margins & Spacing */}
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">
+            Marges & Espacement
+          </h3>
+          <div className="space-y-3">
+            {/* Uniform Margin */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Marges uniformes (mm)
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                placeholder="Ex: 5"
+                onChange={(e) => {
+                  const value = parseFloat(e.target.value);
+                  if (!isNaN(value) && value >= 0) {
+                    setMargins({
+                      top: value,
+                      right: value,
+                      bottom: value,
+                      left: value,
+                    });
+                  }
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* Individual Margins */}
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { key: 'top', label: 'Haut' },
+                { key: 'right', label: 'Droite' },
+                { key: 'bottom', label: 'Bas' },
+                { key: 'left', label: 'Gauche' },
+              ].map(({ key, label }) => (
+                <div key={key}>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    {label}
                   </label>
                   <input
                     type="number"
-                    step="0.1"
-                    min="0.1"
-                    value={margins[side as keyof PageMargins]}
+                    step="0.5"
+                    min="0"
+                    value={margins[key as keyof PageMargins]}
                     onChange={(e) => {
                       const value = parseFloat(e.target.value);
                       setMargins((p) => ({
                         ...p,
-                        [side]: Math.max(0.1, value || 0.1),
+                        [key]: Math.max(0, value || 0),
                       }));
                     }}
-                    className="w-full px-3 py-2 border-2 border-indigo-300 rounded-lg text-center font-semibold"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   />
                 </div>
               ))}
             </div>
-          </div>
 
-          {/* Statistics Panel */}
-          <StatsPanel
-            perPage={layoutData.perPage}
-            totalCards={getTotalCards(cards)}
-            totalPages={calculatePages()}
-            cardSpacing={cardSpacing}
-            setCardSpacing={setCardSpacing}
-          />
+            {/* Card Spacing */}
+            <div className="pt-3 border-t border-gray-200">
+              <label className="block text-xs font-medium text-gray-700 mb-1">
+                Espacement entre cartes: {cardSpacing} mm
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                step="0.5"
+                value={cardSpacing}
+                onChange={(e) => setCardSpacing(parseFloat(e.target.value))}
+                className="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Panel - Preview */}
+      <div
+        ref={previewContainerRef}
+        className="flex-1 overflow-y-auto bg-gray-50 border border-gray-200 rounded-lg"
+      >
+        <div className="sticky top-0 bg-white border-b border-gray-200 z-10 px-6 py-4">
+          <h3 className="text-lg font-semibold text-gray-900">
+            Aperçu des pages A4
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">
+            {totalPages} page{totalPages > 1 ? 's' : ''} • {totalSheets} feuille
+            {totalSheets > 1 ? 's' : ''}
+          </p>
         </div>
 
-        {/* Right Panel - Preview */}
-        <div
-          ref={previewContainerRef}
-          className="col-span-3 overflow-y-auto bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl"
-        >
-          <div className="sticky top-0 bg-white/95 backdrop-blur-sm border-b border-gray-200 shadow-sm z-10 px-8 py-6">
-            <h3 className="text-xl font-bold text-indigo-900 text-center">
-              Aperçu des pages A4
-            </h3>
-          </div>
-
-          <div className="p-8">
-            <div
-              className="grid gap-8"
-              style={{
-                gridTemplateColumns: `repeat(auto-fit, minmax(${Math.max(
-                  A4_WIDTH_MM / scale,
-                  200
-                )}px, 1fr))`,
-                justifyItems: 'center',
-              }}
-            >
-              {Array.from({ length: calculatePages() }, (_, i) => (
-                <React.Fragment key={i}>
-                  {renderPageLayout(i, 'recto')}
-                  {renderPageLayout(i, 'verso')}
-                </React.Fragment>
-              ))}
-            </div>
+        <div className="p-8">
+          <div className="flex flex-col items-center gap-12">
+            {Array.from({ length: calculatePages() }, (_, i) => (
+              <React.Fragment key={i}>
+                {renderPageLayout(i, 'recto')}
+                {renderPageLayout(i, 'verso')}
+              </React.Fragment>
+            ))}
           </div>
         </div>
       </div>

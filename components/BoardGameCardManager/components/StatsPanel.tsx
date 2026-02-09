@@ -17,36 +17,24 @@ export const StatsPanel: React.FC<StatsPanelProps> = ({
   setCardSpacing,
 }) => {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-inner border border-indigo-200">
-      <h3 className="text-lg font-bold text-indigo-900 mb-4">Statistiques</h3>
-      <div className="space-y-4">
-        <div className="text-center p-4 bg-indigo-50 rounded-lg">
-          <p className="text-xs text-gray-600 mb-1">Cartes par page</p>
-          <p className="text-2xl font-bold text-indigo-600">{perPage}</p>
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
+      <h3 className="text-sm font-semibold text-gray-900 mb-3">Statistiques</h3>
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between items-center">
+          <span className="text-gray-600">Cartes / page</span>
+          <span className="font-semibold text-gray-900">{perPage}</span>
         </div>
-        <div className="text-center p-4 bg-emerald-50 rounded-lg">
-          <p className="text-xs text-gray-600 mb-1">Total cartes</p>
-          <p className="text-2xl font-bold text-emerald-600">{totalCards}</p>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-600">Total cartes</span>
+          <span className="font-semibold text-gray-900">{totalCards}</span>
         </div>
-        <div className="text-center p-4 bg-purple-50 rounded-lg">
-          <p className="text-xs text-gray-600 mb-1">Pages nécessaires</p>
-          <p className="text-2xl font-bold text-purple-600">{totalPages}</p>
-          <p className="text-xs text-gray-500">
-            ({totalPages * 2} feuilles A4)
-          </p>
+        <div className="flex justify-between items-center">
+          <span className="text-gray-600">Pages</span>
+          <span className="font-semibold text-gray-900">{totalPages}</span>
         </div>
-        <div className="text-center p-4 bg-amber-50 rounded-lg">
-          <p className="text-xs text-gray-600 mb-1">Espacement</p>
-          <p className="text-2xl font-bold text-amber-600">{cardSpacing} mm</p>
-          <input
-            type="range"
-            min="0"
-            max="10"
-            step="0.5"
-            value={cardSpacing}
-            onChange={(e) => setCardSpacing(parseFloat(e.target.value))}
-            className="w-full mt-3"
-          />
+        <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+          <span className="text-gray-600">Feuilles A4</span>
+          <span className="font-semibold text-gray-900">{totalPages * 2}</span>
         </div>
       </div>
     </div>

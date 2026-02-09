@@ -1,6 +1,6 @@
 // components/ImageCard.tsx
 import React from 'react';
-import { Trash2 } from 'lucide-react';
+import { X } from 'lucide-react';
 import { ImageFile } from '../types';
 
 interface ImageCardProps {
@@ -16,7 +16,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
 }) => {
   return (
     <div className="relative group">
-      <div className="aspect-[2.5/3.5] overflow-hidden rounded-xl border-2 border-gray-200 shadow-sm bg-white group-hover:shadow-lg transition-all">
+      <div className="aspect-[2.5/3.5] overflow-hidden rounded-lg border border-gray-200 bg-white group-hover:shadow-md transition-shadow">
         <img
           src={img.previewUrl}
           alt={img.name}
@@ -25,12 +25,15 @@ export const ImageCard: React.FC<ImageCardProps> = ({
       </div>
       <button
         onClick={onDelete}
-        className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-600"
+        className="absolute -top-2 -right-2 p-1 bg-white border border-gray-300 text-gray-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-50 hover:text-red-600 hover:border-red-300"
       >
-        <Trash2 className="w-4 h-4" />
+        <X className="w-3.5 h-3.5" />
       </button>
-      <p className="text-xs text-gray-600 mt-1.5 truncate text-center">
-        {img.name}
+      <p
+        className="text-xs text-gray-500 mt-1.5 truncate text-center"
+        title={img.name}
+      >
+        {img.width} × {img.height}
       </p>
     </div>
   );
