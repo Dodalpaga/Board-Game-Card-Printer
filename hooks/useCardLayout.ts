@@ -1,22 +1,37 @@
 // hooks/useCardLayout.ts
-import { useMemo } from 'react';
-import { Card, ImageFile, PageMargins, LayoutData } from '../types';
-import { A4_WIDTH_MM, A4_HEIGHT_MM } from '../constants';
-import { getCardSizeInMm } from '../utils';
+import { useMemo, useState, useEffect } from 'react';
+import { Card, ImageFile, PageMargins, LayoutData } from '@/utils/types';
+import { A4_WIDTH_MM, A4_HEIGHT_MM } from '@/utils/constants';
+import { getCardSizeInMm } from '@/utils/utils';
 
 export const useCardLayout = (
   cards: Card[],
   rectos: ImageFile[],
   margins: PageMargins,
   cardSpacing: number,
-  dpi: number
-): LayoutData => {
-  return useMemo(() => {
+  dpi: number,
+): { layoutData: LayoutData; isCalculating: boolean } => {
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [debouncedDpi, setDebouncedDpi] = useState(dpi);
+
+  // Debounce DPI changes to avoid expensive recalculations
+  useEffect(() => {
+    setIsCalculating(true);
+    const timer = setTimeout(() => {
+      setDebouncedDpi(dpi);
+      setIsCalculating(false);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [dpi]);
+
+  const layoutData = useMemo(() => {
     if (cards.length === 0) return { perPage: 0, layout: [] };
 
     const availableWidth = A4_WIDTH_MM - margins.left - margins.right;
     const availableHeight = A4_HEIGHT_MM - margins.top - margins.bottom;
 
+    // Create all card instances
     const allCardInstances: { card: Card; instanceId: string }[] = [];
     cards.forEach((card) => {
       for (let i = 0; i < card.quantity; i++) {
@@ -24,33 +39,47 @@ export const useCardLayout = (
       }
     });
 
+    // Sort by height for better packing (tallest first)
     allCardInstances.sort((a, b) => {
-      const sizeA = getCardSizeInMm(a.card.rectoId, rectos, dpi);
-      const sizeB = getCardSizeInMm(b.card.rectoId, rectos, dpi);
+      const sizeA = getCardSizeInMm(a.card.rectoId, rectos, debouncedDpi);
+      const sizeB = getCardSizeInMm(b.card.rectoId, rectos, debouncedDpi);
       return sizeB.height - sizeA.height;
     });
 
     const pages: { card: Card; x: number; y: number }[][] = [[]];
     let currentPageIndex = 0;
 
+    // Optimized card placement algorithm
     const placeCard = (
       card: Card,
-      pageCards: { card: Card; x: number; y: number }[]
+      pageCards: { card: Card; x: number; y: number }[],
     ): boolean => {
-      const { width, height } = getCardSizeInMm(card.rectoId, rectos, dpi);
+      const { width, height } = getCardSizeInMm(
+        card.rectoId,
+        rectos,
+        debouncedDpi,
+      );
+
+      // Try to place card with optimized grid search
+      const stepSize = 5; // mm - coarser grid for performance
 
       for (
         let rowY = margins.top;
-        rowY <= availableHeight + height;
-        rowY += 1
+        rowY + height <= A4_HEIGHT_MM - margins.bottom;
+        rowY += stepSize
       ) {
         for (
           let colX = margins.left;
-          colX <= availableWidth + width;
-          colX += 1
+          colX + width <= A4_WIDTH_MM - margins.right;
+          colX += stepSize
         ) {
-          const fits = !pageCards.some((placed) => {
-            const pSize = getCardSizeInMm(placed.card.rectoId, rectos, dpi);
+          // Check collision with existing cards
+          const hasCollision = pageCards.some((placed) => {
+            const pSize = getCardSizeInMm(
+              placed.card.rectoId,
+              rectos,
+              debouncedDpi,
+            );
             return !(
               colX + width + cardSpacing <= placed.x ||
               colX - cardSpacing >= placed.x + pSize.width ||
@@ -59,11 +88,7 @@ export const useCardLayout = (
             );
           });
 
-          if (
-            fits &&
-            colX + width <= A4_WIDTH_MM - margins.right &&
-            rowY + height <= A4_HEIGHT_MM - margins.bottom
-          ) {
+          if (!hasCollision) {
             pageCards.push({ card, x: colX, y: rowY });
             return true;
           }
@@ -72,8 +97,11 @@ export const useCardLayout = (
       return false;
     };
 
+    // Place all cards
     allCardInstances.forEach(({ card }) => {
       let placed = false;
+
+      // Try current and existing pages first
       for (let i = currentPageIndex; i < pages.length; i++) {
         if (placeCard(card, pages[i])) {
           placed = true;
@@ -81,6 +109,8 @@ export const useCardLayout = (
           break;
         }
       }
+
+      // Create new page if needed
       if (!placed) {
         pages.push([]);
         placeCard(card, pages[pages.length - 1]);
@@ -99,9 +129,11 @@ export const useCardLayout = (
           y: placed.y,
           page: pageIndex,
         };
-      })
+      }),
     );
 
     return { perPage, layout };
-  }, [cards, rectos, margins, cardSpacing, dpi]);
+  }, [cards, rectos, margins, cardSpacing, debouncedDpi]);
+
+  return { layoutData, isCalculating };
 };

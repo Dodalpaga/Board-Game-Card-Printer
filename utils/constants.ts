@@ -1,4 +1,4 @@
-// constants.ts
+// utils/constants.ts
 export const A4_WIDTH_MM = 210;
 export const A4_HEIGHT_MM = 297;
 
@@ -11,7 +11,7 @@ export const DEFAULT_MARGINS = {
 
 export const DEFAULT_CARD_SPACING = 0.5;
 export const DEFAULT_SCALE = 0.5;
-export const DEFAULT_DPI = 72;
+export const DEFAULT_DPI = 150;
 
 // Calculate mm per pixel based on DPI
 // Formula: 25.4 mm per inch ÷ DPI

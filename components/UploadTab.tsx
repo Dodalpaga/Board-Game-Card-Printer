@@ -1,9 +1,10 @@
 // components/UploadTab.tsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Upload, Image as ImageIcon } from 'lucide-react';
-import { ImageFile } from '../types';
-import { ImageCard } from './ImageCard';
-import { createThumbnail, generateId } from '../utils';
+import { ImageFile } from '@/utils/types';
+import { ImageCard } from '@/components/ImageCard';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { processImagesInBatches } from '@/utils/utils';
 
 interface UploadTabProps {
   rectos: ImageFile[];
@@ -20,46 +21,54 @@ export const UploadTab: React.FC<UploadTabProps> = ({
   setVersos,
   deleteImage,
 }) => {
-  const handleFileUpload = (
+  const [uploadingRecto, setUploadingRecto] = useState(false);
+  const [uploadingVerso, setUploadingVerso] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+
+  const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     type: 'recto' | 'verso',
   ) => {
     const files = e.target.files;
-    if (!files) return;
+    if (!files || files.length === 0) return;
 
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const imageUrl = event.target?.result as string;
-        const img = new Image();
-        img.src = imageUrl;
-        img.onload = () => {
-          const previewUrl = createThumbnail(img, 300, 0.7);
-          const layoutPreviewUrl = createThumbnail(img, 100, 0.3);
+    const fileArray = Array.from(files);
+    const setLoading = type === 'recto' ? setUploadingRecto : setUploadingVerso;
 
-          const newImage: ImageFile = {
-            id: generateId(type),
-            name: file.name,
-            url: imageUrl,
-            previewUrl,
-            layoutPreviewUrl,
-            width: img.naturalWidth,
-            height: img.naturalHeight,
-          };
-          if (type === 'recto') setRectos((prev) => [...prev, newImage]);
-          else setVersos((prev) => [...prev, newImage]);
-        };
-      };
-      reader.readAsDataURL(file);
-    });
+    setLoading(true);
+    setUploadProgress(0);
+
+    try {
+      const processedImages = await processImagesInBatches(
+        fileArray,
+        type,
+        (current, total) => {
+          setUploadProgress((current / total) * 100);
+        },
+      );
+
+      if (type === 'recto') {
+        setRectos((prev) => [...prev, ...processedImages]);
+      } else {
+        setVersos((prev) => [...prev, ...processedImages]);
+      }
+    } catch (error) {
+      console.error('Error processing images:', error);
+    } finally {
+      setLoading(false);
+      setUploadProgress(0);
+      e.target.value = ''; // Reset input
+    }
   };
 
   const ImageSection = ({
     type,
     images,
+    isUploading,
   }: {
     type: 'recto' | 'verso';
     images: ImageFile[];
+    isUploading: boolean;
   }) => (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -75,7 +84,16 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         </div>
       </div>
 
-      {images.length === 0 ? (
+      {isUploading && (
+        <div className="mb-6">
+          <LoadingSpinner
+            message={`Traitement des images ${type === 'recto' ? 'recto' : 'verso'}...`}
+            progress={uploadProgress}
+          />
+        </div>
+      )}
+
+      {images.length === 0 && !isUploading ? (
         <label className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-white hover:bg-gray-50 transition-colors group">
           <div className="flex flex-col items-center">
             <div className="p-3 bg-gray-100 rounded-full group-hover:bg-gray-200 transition-colors mb-3">
@@ -94,9 +112,10 @@ export const UploadTab: React.FC<UploadTabProps> = ({
             accept="image/*"
             multiple
             onChange={(e) => handleFileUpload(e, type)}
+            disabled={isUploading}
           />
         </label>
-      ) : (
+      ) : images.length > 0 ? (
         <div>
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-3">
             {images.map((img) => (
@@ -108,27 +127,28 @@ export const UploadTab: React.FC<UploadTabProps> = ({
               />
             ))}
           </div>
-          <label className="flex items-center justify-center gap-2 mt-4 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer">
+          <label className="flex items-center justify-center gap-2 mt-4 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
             <Upload className="w-4 h-4" />
-            Ajouter d'autres images
+            Ajouter d&apos;autres images
             <input
               type="file"
               className="hidden"
               accept="image/*"
               multiple
               onChange={(e) => handleFileUpload(e, type)}
+              disabled={isUploading}
             />
           </label>
         </div>
-      )}
+      ) : null}
     </div>
   );
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
-      <ImageSection type="recto" images={rectos} />
+      <ImageSection type="recto" images={rectos} isUploading={uploadingRecto} />
       <div className="border-t border-gray-200" />
-      <ImageSection type="verso" images={versos} />
+      <ImageSection type="verso" images={versos} isUploading={uploadingVerso} />
     </div>
   );
 };

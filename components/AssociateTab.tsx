@@ -1,8 +1,8 @@
 // components/AssociateTab.tsx
 import React, { useState } from 'react';
 import { Plus, Trash2, AlertCircle } from 'lucide-react';
-import { ImageFile, Card } from '../types';
-import { getUnusedRectos, generateId } from '../utils';
+import { ImageFile, Card } from '@/utils/types';
+import { getUnusedRectos, generateId } from '@/utils/utils';
 
 interface AssociateTabProps {
   rectos: ImageFile[];
@@ -11,6 +11,31 @@ interface AssociateTabProps {
   setCards: React.Dispatch<React.SetStateAction<Card[]>>;
   showToast: (message: string) => void;
 }
+
+// Lazy-loaded image component
+const LazyImage: React.FC<{ src: string; alt: string; className?: string }> =
+  React.memo(({ src, alt, className }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
+
+    return (
+      <>
+        {!isLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <div className="w-4 h-4 border-2 border-gray-300 border-t-indigo-600 rounded-full animate-spin" />
+          </div>
+        )}
+        <img
+          src={src}
+          alt={alt}
+          className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`}
+          onLoad={() => setIsLoaded(true)}
+          loading="lazy"
+        />
+      </>
+    );
+  });
+
+LazyImage.displayName = 'LazyImage';
 
 export const AssociateTab: React.FC<AssociateTabProps> = ({
   rectos,
@@ -104,7 +129,7 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
       <div className="flex flex-col items-center justify-center py-20 text-gray-500">
         <AlertCircle className="w-16 h-16 mb-4 text-gray-400" />
         <p className="text-lg font-medium text-gray-900">
-          Ajoutez d'abord des images
+          Ajoutez d&apos;abord des images
         </p>
         <p className="text-sm text-gray-600 mt-1">
           Uploadez des rectos et des versos pour créer des cartes
@@ -147,11 +172,13 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                         : 'border-gray-300 hover:border-gray-400'
                     }`}
                   >
-                    <img
-                      src={recto.previewUrl}
-                      alt={recto.name}
-                      className="w-full aspect-[2.5/3.5] object-cover"
-                    />
+                    <div className="relative w-full aspect-[2.5/3.5]">
+                      <LazyImage
+                        src={recto.thumbnailUrl}
+                        alt={recto.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                     {selectedRectos.includes(recto.id) && (
                       <div className="absolute inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center">
                         <div className="bg-white rounded-full w-6 h-6 flex items-center justify-center">
@@ -189,11 +216,13 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                         : 'border-gray-300 hover:border-gray-400'
                     }`}
                   >
-                    <img
-                      src={verso.previewUrl}
-                      alt={verso.name}
-                      className="w-full aspect-[2.5/3.5] object-cover"
-                    />
+                    <div className="relative w-full aspect-[2.5/3.5]">
+                      <LazyImage
+                        src={verso.thumbnailUrl}
+                        alt={verso.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
                   </button>
                 ))}
               </div>
@@ -236,12 +265,14 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                     <p className="text-xs font-medium text-gray-600 mb-2">
                       Recto
                     </p>
-                    <div className="w-20 aspect-[2.5/3.5] rounded overflow-hidden border border-gray-300">
-                      <img
-                        src={recto?.previewUrl}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="relative w-20 aspect-[2.5/3.5] rounded overflow-hidden border border-gray-300">
+                      {recto && (
+                        <LazyImage
+                          src={recto.thumbnailUrl}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                     </div>
                   </div>
 
@@ -255,14 +286,14 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                         <button
                           key={v.id}
                           onClick={() => changeVerso(card.id, v.id)}
-                          className={`flex-shrink-0 w-16 aspect-[2.5/3.5] rounded overflow-hidden border-2 transition-all ${
+                          className={`flex-shrink-0 relative w-16 aspect-[2.5/3.5] rounded overflow-hidden border-2 transition-all ${
                             card.versoId === v.id
                               ? 'border-gray-900 ring-2 ring-gray-900 ring-offset-1'
                               : 'border-gray-300 opacity-50 hover:opacity-100 hover:border-gray-400'
                           }`}
                         >
-                          <img
-                            src={v.previewUrl}
+                          <LazyImage
+                            src={v.thumbnailUrl}
                             alt=""
                             className="w-full h-full object-cover"
                           />
@@ -291,6 +322,7 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                   <button
                     onClick={() => deleteCard(card.id)}
                     className="flex-shrink-0 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    aria-label="Supprimer la carte"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
