@@ -1,8 +1,9 @@
 // components/AssociateTab.tsx
 import React, { useState } from 'react';
-import { Plus, Trash2, AlertCircle } from 'lucide-react';
+import { Plus, Trash2, AlertCircle, Info } from 'lucide-react';
 import { ImageFile, Card } from '@/utils/types';
 import { getUnusedRectos, generateId } from '@/utils/utils';
+import { SelectableImageCard } from '@/components/SelectableImageCard';
 
 interface AssociateTabProps {
   rectos: ImageFile[];
@@ -12,7 +13,7 @@ interface AssociateTabProps {
   showToast: (message: string) => void;
 }
 
-// Lazy-loaded image component
+// Lazy-loaded image component for verso selection
 const LazyImage: React.FC<{ src: string; alt: string; className?: string }> =
   React.memo(({ src, alt, className }) => {
     const [isLoaded, setIsLoaded] = useState(false);
@@ -46,11 +47,51 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
 }) => {
   const [selectedRectos, setSelectedRectos] = useState<string[]>([]);
   const [selectedVerso, setSelectedVerso] = useState<string>('');
+  const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
+  const unusedRectos = getUnusedRectos(rectos, cards);
 
   const getImage = (id: string, type: 'recto' | 'verso') =>
     type === 'recto'
       ? rectos.find((r) => r.id === id)
       : versos.find((v) => v.id === id);
+
+  // Handle recto selection with shift-click support
+  const handleRectoClick = (
+    rectoId: string,
+    index: number,
+    e: React.MouseEvent,
+  ) => {
+    e.preventDefault();
+
+    if (e.shiftKey && lastClickedIndex !== null) {
+      // Shift-click: Select range
+      const start = Math.min(lastClickedIndex, index);
+      const end = Math.max(lastClickedIndex, index);
+      const rangeIds = unusedRectos.slice(start, end + 1).map((r) => r.id);
+
+      // Add range to selection (union)
+      setSelectedRectos((prev) => {
+        const newSelection = new Set([...prev, ...rangeIds]);
+        return Array.from(newSelection);
+      });
+    } else if (e.ctrlKey || e.metaKey) {
+      // Ctrl/Cmd-click: Toggle individual while keeping others
+      setSelectedRectos((prev) =>
+        prev.includes(rectoId)
+          ? prev.filter((id) => id !== rectoId)
+          : [...prev, rectoId],
+      );
+      setLastClickedIndex(index);
+    } else {
+      // Normal click: Toggle individual
+      setSelectedRectos((prev) =>
+        prev.includes(rectoId)
+          ? prev.filter((id) => id !== rectoId)
+          : [...prev, rectoId],
+      );
+      setLastClickedIndex(index);
+    }
+  };
 
   const changeVerso = (cardId: string, newVersoId: string) => {
     const card = cards.find((c) => c.id === cardId);
@@ -89,12 +130,14 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
     if (!verso) return;
 
     let created = 0;
+    let incompatible = 0;
+
     selectedRectos.forEach((rectoId) => {
       const recto = rectos.find((r) => r.id === rectoId);
       if (!recto) return;
 
       if (recto.width !== verso.width || recto.height !== verso.height) {
-        showToast(`⚠️ Dimensions incompatibles : ${recto.name}`);
+        incompatible++;
         return;
       }
 
@@ -117,11 +160,24 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
 
     setSelectedRectos([]);
     setSelectedVerso('');
+    setLastClickedIndex(null);
+
     if (created > 0) {
       showToast(
         `✅ ${created} carte${created > 1 ? 's' : ''} créée${created > 1 ? 's' : ''}`,
       );
     }
+    if (incompatible > 0) {
+      showToast(
+        `⚠️ ${incompatible} image${incompatible > 1 ? 's' : ''} ignorée${incompatible > 1 ? 's' : ''} (dimensions incompatibles)`,
+      );
+    }
+  };
+
+  // Clear selection helper
+  const clearSelection = () => {
+    setSelectedRectos([]);
+    setLastClickedIndex(null);
   };
 
   if (rectos.length === 0 || versos.length === 0) {
@@ -138,8 +194,6 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
     );
   }
 
-  const unusedRectos = getUnusedRectos(rectos, cards);
-
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Create New Cards */}
@@ -152,51 +206,55 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
           <div className="grid md:grid-cols-2 gap-8">
             {/* Select Rectos */}
             <div>
-              <label className="block text-sm font-medium text-gray-900 mb-3">
-                1. Sélectionner les rectos
-              </label>
-              <div className="grid grid-cols-4 gap-2 max-h-96 overflow-y-auto p-3 bg-gray-50 rounded-lg border border-gray-200">
-                {unusedRectos.map((recto) => (
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-gray-900">
+                  1. Sélectionner les rectos
+                </label>
+                {selectedRectos.length > 0 && (
                   <button
-                    key={recto.id}
-                    onClick={() =>
-                      setSelectedRectos((prev) =>
-                        prev.includes(recto.id)
-                          ? prev.filter((id) => id !== recto.id)
-                          : [...prev, recto.id],
-                      )
-                    }
-                    className={`relative rounded-lg overflow-hidden border-2 transition-all ${
-                      selectedRectos.includes(recto.id)
-                        ? 'border-gray-900 ring-2 ring-gray-900 ring-offset-2'
-                        : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                    onClick={clearSelection}
+                    className="text-xs text-gray-600 hover:text-gray-900 underline"
                   >
-                    <div className="relative w-full aspect-[2.5/3.5]">
-                      <LazyImage
-                        src={recto.thumbnailUrl}
-                        alt={recto.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    {selectedRectos.includes(recto.id) && (
-                      <div className="absolute inset-0 bg-gray-900 bg-opacity-20 flex items-center justify-center">
-                        <div className="bg-white rounded-full w-6 h-6 flex items-center justify-center">
-                          <span className="text-gray-900 text-sm font-bold">
-                            ✓
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                    Tout désélectionner
                   </button>
+                )}
+              </div>
+
+              {/* Selection hint */}
+              <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+                <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-blue-900">
+                  <span className="font-medium">Astuce :</span> Cliquez pour
+                  sélectionner,
+                  <span className="font-semibold"> Shift+Clic</span> pour
+                  sélectionner une plage,
+                  <span className="font-semibold"> Ctrl/Cmd+Clic</span> pour
+                  ajouter
+                </p>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2 max-h-96 overflow-y-auto p-3 bg-gray-50 rounded-lg border border-gray-200">
+                {unusedRectos.map((recto, index) => (
+                  <SelectableImageCard
+                    key={recto.id}
+                    image={recto}
+                    isSelected={selectedRectos.includes(recto.id)}
+                    onSelect={(e) => handleRectoClick(recto.id, index, e)}
+                  />
                 ))}
               </div>
+
               {selectedRectos.length > 0 && (
-                <p className="mt-2 text-sm text-gray-600">
-                  {selectedRectos.length} recto
-                  {selectedRectos.length > 1 ? 's' : ''} sélectionné
-                  {selectedRectos.length > 1 ? 's' : ''}
-                </p>
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-semibold text-green-600">
+                      {selectedRectos.length}
+                    </span>{' '}
+                    recto
+                    {selectedRectos.length > 1 ? 's' : ''} sélectionné
+                    {selectedRectos.length > 1 ? 's' : ''}
+                  </p>
+                </div>
               )}
             </div>
 
@@ -212,8 +270,8 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                     onClick={() => setSelectedVerso(verso.id)}
                     className={`relative rounded-lg overflow-hidden border-2 transition-all ${
                       selectedVerso === verso.id
-                        ? 'border-gray-900 ring-2 ring-gray-900 ring-offset-2'
-                        : 'border-gray-300 hover:border-gray-400'
+                        ? 'border-green-500 ring-2 ring-green-500 ring-offset-2 shadow-lg'
+                        : 'border-gray-300 hover:border-gray-400 hover:shadow-md'
                     }`}
                   >
                     <div className="relative w-full aspect-[2.5/3.5]">
@@ -222,6 +280,26 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                         alt={verso.name}
                         className="w-full h-full object-cover"
                       />
+
+                      {/* Selected indicator */}
+                      {selectedVerso === verso.id && (
+                        <div className="absolute top-1 right-1 bg-green-500 rounded-full p-1 shadow-lg">
+                          <div className="w-4 h-4 flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">
+                              ✓
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Subtle overlay */}
+                      <div
+                        className={`absolute inset-0 transition-opacity pointer-events-none ${
+                          selectedVerso === verso.id
+                            ? 'bg-green-500 bg-opacity-10'
+                            : 'bg-gray-900 bg-opacity-0 hover:bg-opacity-5'
+                        }`}
+                      />
                     </div>
                   </button>
                 ))}
@@ -229,11 +307,19 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex justify-end gap-3">
+            {selectedRectos.length > 0 && (
+              <button
+                onClick={clearSelection}
+                className="px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Annuler la sélection
+              </button>
+            )}
             <button
               onClick={createCards}
               disabled={selectedRectos.length === 0 || !selectedVerso}
-              className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-gray-900 rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               <Plus className="w-4 h-4" />
               Créer {selectedRectos.length > 0
@@ -258,7 +344,7 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
               return (
                 <div
                   key={card.id}
-                  className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-6"
+                  className="bg-white border border-gray-200 rounded-lg p-4 flex items-center gap-6 hover:shadow-md transition-shadow"
                 >
                   {/* Recto */}
                   <div className="flex-shrink-0">
@@ -288,7 +374,7 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                           onClick={() => changeVerso(card.id, v.id)}
                           className={`flex-shrink-0 relative w-16 aspect-[2.5/3.5] rounded overflow-hidden border-2 transition-all ${
                             card.versoId === v.id
-                              ? 'border-gray-900 ring-2 ring-gray-900 ring-offset-1'
+                              ? 'border-green-500 ring-2 ring-green-500 ring-offset-1'
                               : 'border-gray-300 opacity-50 hover:opacity-100 hover:border-gray-400'
                           }`}
                         >
@@ -297,6 +383,15 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                             alt=""
                             className="w-full h-full object-cover"
                           />
+                          {card.versoId === v.id && (
+                            <div className="absolute top-0.5 right-0.5 bg-green-500 rounded-full p-0.5">
+                              <div className="w-3 h-3 flex items-center justify-center">
+                                <span className="text-white text-[10px] font-bold">
+                                  ✓
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -314,7 +409,7 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                       onChange={(e) =>
                         updateQuantity(card.id, parseInt(e.target.value) || 1)
                       }
-                      className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                      className="w-20 px-3 py-2 border border-gray-300 rounded-lg text-center font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                     />
                   </div>
 
