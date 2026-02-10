@@ -1,5 +1,5 @@
 // components/AssociateTab.tsx
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Trash2, AlertCircle, Info } from 'lucide-react';
 import { ImageFile, Card } from '@/utils/types';
 import { getUnusedRectos, generateId } from '@/utils/utils';
@@ -14,9 +14,17 @@ interface AssociateTabProps {
 }
 
 // Lazy-loaded image component for verso selection
+// Uses ref + .complete check to handle data-URL onLoad race condition
 const LazyImage: React.FC<{ src: string; alt: string; className?: string }> =
   React.memo(({ src, alt, className }) => {
     const [isLoaded, setIsLoaded] = useState(false);
+    const imgRef = useRef<HTMLImageElement>(null);
+
+    useEffect(() => {
+      if (imgRef.current?.complete) {
+        setIsLoaded(true);
+      }
+    }, []);
 
     return (
       <>
@@ -26,9 +34,10 @@ const LazyImage: React.FC<{ src: string; alt: string; className?: string }> =
           </div>
         )}
         <img
+          ref={imgRef}
           src={src}
           alt={alt}
-          className={`${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`}
+          className={`absolute inset-0 ${className} ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-200`}
           onLoad={() => setIsLoaded(true)}
           loading="lazy"
         />
@@ -64,18 +73,11 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
     e.preventDefault();
 
     if (e.shiftKey && lastClickedIndex !== null) {
-      // Shift-click: Select range
       const start = Math.min(lastClickedIndex, index);
       const end = Math.max(lastClickedIndex, index);
       const rangeIds = unusedRectos.slice(start, end + 1).map((r) => r.id);
-
-      // Add range to selection (union)
-      setSelectedRectos((prev) => {
-        const newSelection = new Set([...prev, ...rangeIds]);
-        return Array.from(newSelection);
-      });
+      setSelectedRectos((prev) => Array.from(new Set([...prev, ...rangeIds])));
     } else if (e.ctrlKey || e.metaKey) {
-      // Ctrl/Cmd-click: Toggle individual while keeping others
       setSelectedRectos((prev) =>
         prev.includes(rectoId)
           ? prev.filter((id) => id !== rectoId)
@@ -83,7 +85,6 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
       );
       setLastClickedIndex(index);
     } else {
-      // Normal click: Toggle individual
       setSelectedRectos((prev) =>
         prev.includes(rectoId)
           ? prev.filter((id) => id !== rectoId)
@@ -174,7 +175,6 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
     }
   };
 
-  // Clear selection helper
   const clearSelection = () => {
     setSelectedRectos([]);
     setLastClickedIndex(null);
@@ -220,7 +220,6 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                 )}
               </div>
 
-              {/* Selection hint */}
               <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
                 <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
                 <p className="text-xs text-blue-900">
@@ -245,16 +244,13 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
               </div>
 
               {selectedRectos.length > 0 && (
-                <div className="mt-2 flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
-                    <span className="font-semibold text-green-600">
-                      {selectedRectos.length}
-                    </span>{' '}
-                    recto
-                    {selectedRectos.length > 1 ? 's' : ''} sélectionné
-                    {selectedRectos.length > 1 ? 's' : ''}
-                  </p>
-                </div>
+                <p className="mt-2 text-sm text-gray-600">
+                  <span className="font-semibold text-green-600">
+                    {selectedRectos.length}
+                  </span>{' '}
+                  recto{selectedRectos.length > 1 ? 's' : ''} sélectionné
+                  {selectedRectos.length > 1 ? 's' : ''}
+                </p>
               )}
             </div>
 
@@ -281,9 +277,8 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                         className="w-full h-full object-cover"
                       />
 
-                      {/* Selected indicator */}
                       {selectedVerso === verso.id && (
-                        <div className="absolute top-1 right-1 bg-green-500 rounded-full p-1 shadow-lg">
+                        <div className="absolute top-1 right-1 bg-green-500 rounded-full p-1 shadow-lg z-10">
                           <div className="w-4 h-4 flex items-center justify-center">
                             <span className="text-white text-xs font-bold">
                               ✓
@@ -291,15 +286,6 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                           </div>
                         </div>
                       )}
-
-                      {/* Subtle overlay */}
-                      <div
-                        className={`absolute inset-0 transition-opacity pointer-events-none ${
-                          selectedVerso === verso.id
-                            ? 'bg-green-500 bg-opacity-10'
-                            : 'bg-gray-900 bg-opacity-0 hover:bg-opacity-5'
-                        }`}
-                      />
                     </div>
                   </button>
                 ))}
@@ -384,7 +370,7 @@ export const AssociateTab: React.FC<AssociateTabProps> = ({
                             className="w-full h-full object-cover"
                           />
                           {card.versoId === v.id && (
-                            <div className="absolute top-0.5 right-0.5 bg-green-500 rounded-full p-0.5">
+                            <div className="absolute top-0.5 right-0.5 bg-green-500 rounded-full p-0.5 z-10">
                               <div className="w-3 h-3 flex items-center justify-center">
                                 <span className="text-white text-[10px] font-bold">
                                   ✓

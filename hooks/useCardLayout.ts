@@ -4,24 +4,25 @@ import { Card, ImageFile, PageMargins, LayoutData } from '@/utils/types';
 import { A4_WIDTH_MM, A4_HEIGHT_MM } from '@/utils/constants';
 import { getCardSizeInMm } from '@/utils/utils';
 
+export type CardAlignment = 'left' | 'center' | 'right';
+
 export const useCardLayout = (
   cards: Card[],
   rectos: ImageFile[],
   margins: PageMargins,
   cardSpacing: number,
   dpi: number,
+  alignment: CardAlignment = 'left',
 ): { layoutData: LayoutData; isCalculating: boolean } => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [debouncedDpi, setDebouncedDpi] = useState(dpi);
 
-  // Debounce DPI changes to avoid expensive recalculations
   useEffect(() => {
     setIsCalculating(true);
     const timer = setTimeout(() => {
       setDebouncedDpi(dpi);
       setIsCalculating(false);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [dpi]);
 
@@ -31,109 +32,144 @@ export const useCardLayout = (
     const availableWidth = A4_WIDTH_MM - margins.left - margins.right;
     const availableHeight = A4_HEIGHT_MM - margins.top - margins.bottom;
 
-    // Create all card instances
-    const allCardInstances: { card: Card; instanceId: string }[] = [];
+    // Expand all card instances (respecting quantity)
+    const allInstances: Card[] = [];
     cards.forEach((card) => {
       for (let i = 0; i < card.quantity; i++) {
-        allCardInstances.push({ card, instanceId: `${card.id}-${i}` });
+        allInstances.push(card);
       }
     });
 
-    // Sort by height for better packing (tallest first)
-    allCardInstances.sort((a, b) => {
-      const sizeA = getCardSizeInMm(a.card.rectoId, rectos, debouncedDpi);
-      const sizeB = getCardSizeInMm(b.card.rectoId, rectos, debouncedDpi);
-      return sizeB.height - sizeA.height;
-    });
+    // ─── Shelf/row-based packing ────────────────────────────────────────────
+    // A "shelf" is a horizontal row. Cards are placed left-to-right.
+    // When a card doesn't fit on the current shelf, we start a new one.
+    // When a shelf doesn't fit on the current page, we start a new page.
+    //
+    // Shelf structure: { cards: Card[], totalWidth, maxHeight }
+    // After all shelves are built, we apply alignment to compute final X positions.
 
-    const pages: { card: Card; x: number; y: number }[][] = [[]];
-    let currentPageIndex = 0;
+    type ShelfCard = { card: Card };
+    type Shelf = { cards: ShelfCard[]; totalWidth: number; maxHeight: number };
 
-    // Optimized card placement algorithm
-    const placeCard = (
-      card: Card,
-      pageCards: { card: Card; x: number; y: number }[],
-    ): boolean => {
+    const pages: Shelf[][] = [[]]; // pages[i] = array of shelves on page i
+
+    // Current page/shelf state
+    let pageIndex = 0;
+    let currentShelf: Shelf = { cards: [], totalWidth: 0, maxHeight: 0 };
+    let currentShelfY = margins.top; // Y of current shelf top edge
+
+    const startNewShelf = () => {
+      // Commit the current shelf to the current page
+      if (currentShelf.cards.length > 0) {
+        pages[pageIndex].push(currentShelf);
+        currentShelfY += currentShelf.maxHeight + cardSpacing;
+      }
+      currentShelf = { cards: [], totalWidth: 0, maxHeight: 0 };
+    };
+
+    const startNewPage = () => {
+      startNewShelf(); // Flush current shelf
+      pages.push([]);
+      pageIndex++;
+      currentShelfY = margins.top;
+    };
+
+    for (const card of allInstances) {
       const { width, height } = getCardSizeInMm(
         card.rectoId,
         rectos,
         debouncedDpi,
       );
 
-      // Try to place card with optimized grid search
-      const stepSize = 5; // mm - coarser grid for performance
+      // Guard: if a single card is wider or taller than the available area, skip
+      if (width > availableWidth || height > availableHeight) {
+        console.warn(
+          `Card ${card.id} (${width.toFixed(1)}×${height.toFixed(1)} mm) exceeds printable area.`,
+        );
+        continue;
+      }
 
-      for (
-        let rowY = margins.top;
-        rowY + height <= A4_HEIGHT_MM - margins.bottom;
-        rowY += stepSize
-      ) {
-        for (
-          let colX = margins.left;
-          colX + width <= A4_WIDTH_MM - margins.right;
-          colX += stepSize
-        ) {
-          // Check collision with existing cards
-          const hasCollision = pageCards.some((placed) => {
-            const pSize = getCardSizeInMm(
-              placed.card.rectoId,
-              rectos,
-              debouncedDpi,
-            );
-            return !(
-              colX + width + cardSpacing <= placed.x ||
-              colX - cardSpacing >= placed.x + pSize.width ||
-              rowY + height + cardSpacing <= placed.y ||
-              rowY - cardSpacing >= placed.y + pSize.height
-            );
-          });
+      // Width needed on this shelf (include inter-card spacing if not the first)
+      const spacingBefore = currentShelf.cards.length > 0 ? cardSpacing : 0;
+      const neededWidth = currentShelf.totalWidth + spacingBefore + width;
 
-          if (!hasCollision) {
-            pageCards.push({ card, x: colX, y: rowY });
-            return true;
+      // Does the card fit horizontally on the current shelf?
+      if (neededWidth > availableWidth) {
+        // Start a new shelf
+        startNewShelf();
+
+        // Does the new shelf fit vertically on the current page?
+        if (currentShelfY + height > A4_HEIGHT_MM - margins.bottom) {
+          startNewPage();
+        }
+      } else {
+        // Check if current shelf height (after adding this card) still fits
+        const newShelfHeight = Math.max(currentShelf.maxHeight, height);
+        if (currentShelfY + newShelfHeight > A4_HEIGHT_MM - margins.bottom) {
+          startNewShelf();
+          if (currentShelfY + height > A4_HEIGHT_MM - margins.bottom) {
+            startNewPage();
           }
         }
       }
-      return false;
-    };
 
-    // Place all cards
-    allCardInstances.forEach(({ card }) => {
-      let placed = false;
+      // Place card on current shelf
+      const spacer = currentShelf.cards.length > 0 ? cardSpacing : 0;
+      currentShelf.totalWidth += spacer + width;
+      currentShelf.maxHeight = Math.max(currentShelf.maxHeight, height);
+      currentShelf.cards.push({ card });
+    }
 
-      // Try current and existing pages first
-      for (let i = currentPageIndex; i < pages.length; i++) {
-        if (placeCard(card, pages[i])) {
-          placed = true;
-          if (i > currentPageIndex) currentPageIndex = i;
-          break;
+    // Flush the last shelf
+    if (currentShelf.cards.length > 0) {
+      pages[pageIndex].push(currentShelf);
+    }
+
+    // ─── Compute final (x, y) positions with alignment ─────────────────────
+    const layout: LayoutData['layout'] = [];
+
+    pages.forEach((shelves, pIdx) => {
+      let y = margins.top;
+
+      shelves.forEach((shelf) => {
+        // Compute starting X based on alignment
+        let startX: number;
+        if (alignment === 'left') {
+          startX = margins.left;
+        } else if (alignment === 'right') {
+          startX = A4_WIDTH_MM - margins.right - shelf.totalWidth;
+        } else {
+          // center
+          startX = margins.left + (availableWidth - shelf.totalWidth) / 2;
         }
-      }
 
-      // Create new page if needed
-      if (!placed) {
-        pages.push([]);
-        placeCard(card, pages[pages.length - 1]);
-        currentPageIndex = pages.length - 1;
-      }
+        let x = startX;
+
+        shelf.cards.forEach(({ card }, cardIdx) => {
+          if (cardIdx > 0) x += cardSpacing;
+
+          const cardMm = getCardSizeInMm(card.rectoId, rectos, debouncedDpi);
+
+          layout.push({
+            card: cards.find((c) => c.id === card.id)!,
+            x,
+            y,
+            page: pIdx,
+          });
+
+          x += cardMm.width;
+        });
+
+        y += shelf.maxHeight + cardSpacing;
+      });
     });
 
-    const perPage = pages[0]?.length || 0;
-    const layout = pages.flatMap((page, pageIndex) =>
-      page.map((placed) => {
-        const card = cards.find((c) => c.id === placed.card.id)!;
-        return {
-          card,
-          quantity: card.quantity,
-          x: placed.x,
-          y: placed.y,
-          page: pageIndex,
-        };
-      }),
-    );
+    const perPage = pages[0]
+      ? pages[0].reduce((sum, shelf) => sum + shelf.cards.length, 0)
+      : 0;
 
     return { perPage, layout };
-  }, [cards, rectos, margins, cardSpacing, debouncedDpi]);
+  }, [cards, rectos, margins, cardSpacing, debouncedDpi, alignment]);
 
   return { layoutData, isCalculating };
 };

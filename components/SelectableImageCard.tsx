@@ -1,5 +1,5 @@
 // components/SelectableImageCard.tsx
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { ImageFile } from '@/utils/types';
 
@@ -12,6 +12,14 @@ interface SelectableImageCardProps {
 export const SelectableImageCard: React.FC<SelectableImageCardProps> =
   React.memo(({ image, isSelected, onSelect }) => {
     const [isLoaded, setIsLoaded] = useState(false);
+    const imgRef = useRef<HTMLImageElement>(null);
+
+    // data URLs may fire onLoad before React attaches the handler — check .complete on mount
+    useEffect(() => {
+      if (imgRef.current?.complete) {
+        setIsLoaded(true);
+      }
+    }, []);
 
     return (
       <button
@@ -30,35 +38,27 @@ export const SelectableImageCard: React.FC<SelectableImageCardProps> =
             </div>
           )}
 
-          {/* Image */}
+          {/* Image — always rendered so onLoad fires */}
           <img
+            ref={imgRef}
             src={image.thumbnailUrl}
             alt={image.name}
-            className={`w-full h-full object-cover transition-opacity duration-200 ${
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-200 ${
               isLoaded ? 'opacity-100' : 'opacity-0'
             }`}
             onLoad={() => setIsLoaded(true)}
             loading="lazy"
           />
 
-          {/* Selection indicator - Green check in top right */}
+          {/* Selection check indicator — top right */}
           {isSelected && (
-            <div className="absolute top-1 right-1 bg-green-500 rounded-full p-1 shadow-lg animate-in zoom-in duration-200">
+            <div className="absolute top-1 right-1 bg-green-500 rounded-full p-1 shadow-lg animate-in zoom-in duration-200 z-10">
               <Check className="w-4 h-4 text-white stroke-[3]" />
             </div>
           )}
-
-          {/* Hover overlay for better feedback */}
-          <div
-            className={`absolute inset-0 transition-opacity pointer-events-none ${
-              isSelected
-                ? 'bg-green-500 bg-opacity-10'
-                : 'bg-gray-900 bg-opacity-0 hover:bg-opacity-5'
-            }`}
-          />
         </div>
 
-        {/* Image info */}
+        {/* Image dimensions */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-2 py-1">
           <p className="text-xs text-white truncate" title={image.name}>
             {image.width} × {image.height}

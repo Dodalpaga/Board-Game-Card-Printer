@@ -1,4 +1,4 @@
-// page.tsx - Main Component
+// app/page.tsx - Main Component
 'use client';
 import React, { useState } from 'react';
 import { Download, Upload as UploadIcon } from 'lucide-react';
@@ -18,7 +18,7 @@ import {
 import { getTotalCards } from '@/utils/utils';
 
 // Import hooks
-import { useCardLayout } from '@/hooks/useCardLayout';
+import { useCardLayout, CardAlignment } from '@/hooks/useCardLayout';
 
 // Import components
 import { UploadTab } from '@/components/UploadTab';
@@ -30,6 +30,7 @@ export default function BoardGameCardManager() {
   // State
   const [rectos, setRectos] = useState<ImageFile[]>([]);
   const [versos, setVersos] = useState<ImageFile[]>([]);
+  const [alignment, setAlignment] = useState<CardAlignment>('left');
   const [cards, setCards] = useState<Card[]>([]);
   const [activeTab, setActiveTab] = useState<TabType>('upload');
   const [margins, setMargins] = useState<PageMargins>(DEFAULT_MARGINS);
@@ -45,6 +46,7 @@ export default function BoardGameCardManager() {
     margins,
     cardSpacing,
     dpi,
+    alignment,
   );
 
   // Toast notification
@@ -233,6 +235,8 @@ export default function BoardGameCardManager() {
               layoutData={layoutData}
               isCalculating={isCalculating}
               showToast={showToast}
+              alignment={alignment}
+              setAlignment={setAlignment}
             />
           )}
         </main>

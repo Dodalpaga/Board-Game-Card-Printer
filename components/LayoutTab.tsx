@@ -1,4 +1,5 @@
 // components/LayoutTab.tsx
+'use client';
 import React, { useRef, useState } from 'react';
 import {
   Printer,
@@ -7,9 +8,13 @@ import {
   ZoomOut,
   ChevronDown,
   ChevronUp,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { ImageFile, Card, PageMargins, LayoutData } from '@/utils/types';
+import { CardAlignment } from '@/hooks/useCardLayout';
 import { A4_WIDTH_MM, A4_HEIGHT_MM } from '@/utils/constants';
 import { getCardSizeInMm, getTotalCards } from '@/utils/utils';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -28,6 +33,8 @@ interface LayoutTabProps {
   setDpi: React.Dispatch<React.SetStateAction<number>>;
   layoutData: LayoutData;
   isCalculating: boolean;
+  alignment: CardAlignment;
+  setAlignment: React.Dispatch<React.SetStateAction<CardAlignment>>;
   showToast: (message: string) => void;
 }
 
@@ -45,6 +52,8 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
   setDpi,
   layoutData,
   isCalculating,
+  alignment,
+  setAlignment,
   showToast,
 }) => {
   const previewContainerRef = useRef<HTMLDivElement>(null);
@@ -54,6 +63,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
     zoom: true,
     dpi: true,
     margins: true,
+    alignment: true,
   });
 
   const toggleSection = (section: keyof typeof expandedSections) => {
@@ -73,14 +83,12 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
   const fitToContainer = () => {
     if (!previewContainerRef.current) return;
     const containerWidth = previewContainerRef.current.clientWidth - 64;
-    const pageWidth = A4_WIDTH_MM;
-    const newScale = Math.max(0.1, Math.min(2, pageWidth / containerWidth));
+    const newScale = Math.max(0.1, Math.min(2, A4_WIDTH_MM / containerWidth));
     setScale(parseFloat(newScale.toFixed(2)));
   };
 
   const exportToPDF = async () => {
     setIsExporting(true);
-
     try {
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -105,7 +113,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
           if (recto) {
             const cardMm = getCardSizeInMm(item.card.rectoId, rectos, dpi);
             pdf.addImage(
-              recto.fullUrl, // Use full quality for PDF
+              recto.fullUrl,
               'JPEG',
               item.x,
               item.y,
@@ -115,7 +123,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
           }
         }
 
-        // Verso page
+        // Verso page (horizontally mirrored for duplex)
         pdf.addPage();
 
         for (const item of pageLayout) {
@@ -128,7 +136,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
               cardMm.width -
               (item.x - margins.left);
             pdf.addImage(
-              verso.fullUrl, // Use full quality for PDF
+              verso.fullUrl,
               'JPEG',
               x,
               item.y,
@@ -172,6 +180,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
           className="bg-white shadow-lg relative border border-gray-200"
           style={{ width: `${pageWidth}px`, height: `${pageHeight}px` }}
         >
+          {/* Printable area guide */}
           <div
             className="absolute border border-dashed border-gray-400 pointer-events-none"
             style={{
@@ -191,6 +200,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
             const cardW = cardMm.width / scale;
             const cardH = cardMm.height / scale;
 
+            // Verso pages are horizontally mirrored for duplex alignment
             const x =
               type === 'recto'
                 ? item.x / scale
@@ -216,7 +226,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
               >
                 {image && (
                   <img
-                    src={image.previewUrl} // Use preview quality for display
+                    src={image.previewUrl}
                     alt=""
                     className="w-full h-full object-cover"
                     loading="lazy"
@@ -262,9 +272,19 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
     </button>
   );
 
+  const alignmentOptions: {
+    value: CardAlignment;
+    label: string;
+    Icon: React.FC<{ className?: string }>;
+  }[] = [
+    { value: 'left', label: 'Gauche', Icon: AlignLeft },
+    { value: 'center', label: 'Centre', Icon: AlignCenter },
+    { value: 'right', label: 'Droite', Icon: AlignRight },
+  ];
+
   return (
     <div className="flex h-[calc(100vh-280px)] min-h-[700px] gap-6">
-      {/* Compact Left Sidebar - Controls */}
+      {/* Left Sidebar - Controls */}
       <div className="w-80 flex-shrink-0 space-y-4">
         {/* Export Button */}
         <button
@@ -311,6 +331,34 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
 
         {/* Collapsible Sections */}
         <div className="space-y-3">
+          {/* Alignment */}
+          <div className="bg-white border border-gray-200 rounded-lg p-3">
+            <SectionHeader title="Alignement (recto)" section="alignment" />
+            {expandedSections.alignment && (
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-1">
+                  {alignmentOptions.map(({ value, label, Icon }) => (
+                    <button
+                      key={value}
+                      onClick={() => setAlignment(value)}
+                      className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg border text-xs font-medium transition-all ${
+                        alignment === value
+                          ? 'bg-indigo-50 border-indigo-500 text-indigo-700 ring-1 ring-indigo-500'
+                          : 'border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500">
+                  Le verso est automatiquement mis en miroir.
+                </p>
+              </div>
+            )}
+          </div>
+
           {/* Zoom Controls */}
           <div className="bg-white border border-gray-200 rounded-lg p-3">
             <SectionHeader title="Zoom" section="zoom" />
@@ -354,9 +402,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
                     value={dpiInput}
                     onChange={(e) => setDpiInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        setDpi(parseFloat(dpiInput) || 72);
-                      }
+                      if (e.key === 'Enter') setDpi(parseFloat(dpiInput) || 72);
                     }}
                     className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-center text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
@@ -408,7 +454,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
                   />
                 </div>
 
-                {/* Individual Margins - 2x2 Grid */}
+                {/* Individual Margins */}
                 <div className="grid grid-cols-2 gap-2">
                   {[
                     { key: 'top', label: 'Haut' },
@@ -441,7 +487,10 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
                 {/* Card Spacing */}
                 <div className="pt-2 border-t border-gray-200">
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Espacement: {cardSpacing} mm
+                    Espacement entre cartes :{' '}
+                    <span className="font-semibold text-gray-900">
+                      {cardSpacing} mm
+                    </span>
                   </label>
                   <input
                     type="range"
@@ -452,6 +501,10 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
                     onChange={(e) => setCardSpacing(parseFloat(e.target.value))}
                     className="w-full"
                   />
+                  <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                    <span>0 mm</span>
+                    <span>10 mm</span>
+                  </div>
                 </div>
               </div>
             )}
