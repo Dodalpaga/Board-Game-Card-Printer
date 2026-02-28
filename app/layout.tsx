@@ -1,22 +1,21 @@
 // app/layout.tsx
-import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: '#070b14',
+};
 
 export const metadata: Metadata = {
-  title: 'Gestionnaire de Cartes | Print & Play',
+  title: {
+    default: 'CardPrinter — Print & Play',
+    template: '%s · CardPrinter',
+  },
   description:
-    'Outil web pour préparer et imprimer vos cartes de jeu de société. Upload, association recto/verso et mise en page optimisée sur A4.',
+    'Outil web open source pour préparer et imprimer vos cartes de jeu de société. Upload, association recto/verso et mise en page optimisée sur A4.',
   keywords: [
     'cartes',
     'jeu de société',
@@ -24,27 +23,19 @@ export const metadata: Metadata = {
     'impression',
     'prototype',
     'board game',
+    'PDF',
+    'A4',
   ],
-  authors: [{ name: 'Dorian VOYDIE' }],
+  authors: [{ name: 'Dorian VOYDIE', url: 'https://github.com/dodalpaga' }],
   creator: 'Dorian VOYDIE',
-
   openGraph: {
     type: 'website',
     locale: 'fr_FR',
     url: 'https://dodalpaga.github.io/Board-Game-Card-Printer/',
-    title: 'Gestionnaire de Cartes | Print & Play',
-    description: 'Créez et imprimez vos cartes de jeu de société facilement',
-    siteName: 'Card Manager',
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'Gestionnaire de Cartes',
-      },
-    ],
+    title: 'CardPrinter — Print & Play',
+    description: 'Créez et imprimez vos cartes de jeu de société facilement.',
+    siteName: 'CardPrinter',
   },
-
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -55,43 +46,25 @@ export const metadata: Metadata = {
       { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
-
   manifest: '/manifest.json',
-
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 5,
-  },
   robots: {
     index: true,
     follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
   },
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="fr">
       <head>
         <meta name="apple-mobile-web-app-title" content="CardPrinter" />
-        <meta name="theme-color" content="#ffffff" />
+        {/* Google Fonts loaded via globals.css @import */}
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
