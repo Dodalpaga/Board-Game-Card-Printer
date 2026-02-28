@@ -34,20 +34,39 @@ Ouvrez [http://localhost:3000](http://localhost:3000)
 ## 📁 Structure du projet
 
 ```
-src/components/BoardGameCardManager/
-├── index.tsx                 # Composant principal
-├── types.ts                  # Interfaces TypeScript
-├── constants.ts              # Configuration
-├── utils.ts                  # Fonctions utilitaires
+.
+├── .github/
+├── app/
+│   ├── app/
+│   ├── apple-icon.png
+│   ├── favicon.svg
+│   ├── globals.css
+│   ├── layout.tsx
+│   └── page.tsx
+├── components/
+│   ├── AssociateTab.tsx
+│   ├── ImageCard.tsx
+│   ├── LayoutTab.tsx
+│   ├── LoadingSpinner.tsx
+│   ├── SelectableImageCard.tsx
+│   ├── Sidebar.tsx
+│   ├── StatsPanel.tsx
+│   ├── ThemeToggle.tsx
+│   ├── Toast.tsx
+│   └── UploadTab.tsx
 ├── hooks/
-│   └── useCardLayout.ts      # Algorithme de placement
-└── components/
-    ├── ImageCard.tsx         # Carte image
-    ├── Toast.tsx             # Notifications
-    ├── StatsPanel.tsx        # Statistiques
-    ├── UploadTab.tsx         # Interface d'upload
-    ├── AssociateTab.tsx      # Gestion des associations
-    └── LayoutTab.tsx         # Mise en page et export
+│   ├── useCardLayout.ts
+│   └── useTheme.ts
+├── public/
+├── utils/
+├── .gitignore
+├── eslint.config.mjs
+├── next.config.ts
+├── package-lock.json
+├── package.json
+├── postcss.config.mjs
+├── README.md
+└── tsconfig.json
 ```
 
 ### 🎯 Architecture modulaire

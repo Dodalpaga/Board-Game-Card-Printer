@@ -15,7 +15,10 @@ import {
   Star,
   FileDown,
   MousePointer,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import { useTheme, LIGHT_VARS } from '@/hooks/useTheme';
 
 /* ─── Animated counter ───────────────────────── */
 function Counter({ end, suffix = '' }: { end: number; suffix?: string }) {
@@ -243,6 +246,8 @@ function StepCard({
 /* ─── Main Landing Page ──────────────────────── */
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
+  const { theme, toggle: toggleTheme } = useTheme();
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -250,13 +255,29 @@ export default function LandingPage() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  /* Apply / remove light-theme CSS vars directly on the root div —
+     same technique as the app page, keeps the landing always self-contained */
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    if (theme === 'light') {
+      Object.entries(LIGHT_VARS).forEach(([prop, val]) =>
+        el.style.setProperty(prop, val),
+      );
+    } else {
+      Object.keys(LIGHT_VARS).forEach((prop) => el.style.removeProperty(prop));
+    }
+  }, [theme]);
+
   return (
     <div
+      ref={wrapperRef}
       style={{
         minHeight: '100vh',
         background: 'var(--bg-base)',
         fontFamily: 'var(--font-body)',
         overflowX: 'hidden',
+        transition: 'background 0.3s ease',
       }}
     >
       {/* ── NAVBAR ── */}
@@ -272,8 +293,9 @@ export default function LandingPage() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          background: scrolled ? 'rgba(7,11,20,0.85)' : 'transparent',
+          background: scrolled ? 'var(--bg-surface)' : 'transparent',
           backdropFilter: scrolled ? 'blur(20px)' : 'none',
+          WebkitBackdropFilter: scrolled ? 'blur(20px)' : 'none',
           borderBottom: scrolled
             ? '1px solid var(--border-subtle)'
             : '1px solid transparent',
@@ -339,6 +361,45 @@ export default function LandingPage() {
             <Github size={14} />
             GitHub
           </a>
+
+          {/* ── Theme toggle ── */}
+          <button
+            onClick={toggleTheme}
+            aria-label={
+              theme === 'dark'
+                ? 'Passer en mode clair'
+                : 'Passer en mode sombre'
+            }
+            title={theme === 'dark' ? 'Mode clair' : 'Mode sombre'}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: 36,
+              height: 36,
+              borderRadius: 9,
+              background: 'var(--glass-bg)',
+              border: '1px solid var(--border-default)',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => {
+              const el = e.currentTarget as HTMLElement;
+              el.style.background = 'var(--glass-bg-strong)';
+              el.style.borderColor = 'var(--border-strong)';
+              el.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              const el = e.currentTarget as HTMLElement;
+              el.style.background = 'var(--glass-bg)';
+              el.style.borderColor = 'var(--border-default)';
+              el.style.color = 'var(--text-secondary)';
+            }}
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
 
           <Link
             href="/app"

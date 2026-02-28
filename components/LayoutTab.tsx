@@ -66,9 +66,8 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
     alignment: true,
   });
 
-  const toggleSection = (section: keyof typeof expandedSections) => {
+  const toggleSection = (section: keyof typeof expandedSections) =>
     setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
-  };
 
   const getImage = (id: string, type: 'recto' | 'verso') =>
     type === 'recto'
@@ -95,7 +94,6 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
         unit: 'mm',
         format: 'a4',
       });
-
       const totalPages = calculatePages();
       let isFirstPage = true;
 
@@ -104,7 +102,6 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
           (item) => item.page === pageIndex,
         );
 
-        // Recto page
         if (!isFirstPage) pdf.addPage();
         isFirstPage = false;
 
@@ -123,9 +120,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
           }
         }
 
-        // Verso page (horizontally mirrored for duplex)
         pdf.addPage();
-
         for (const item of pageLayout) {
           const verso = getImage(item.card.versoId, 'verso');
           if (verso) {
@@ -146,7 +141,6 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
           }
         }
       }
-
       pdf.save('cartes-impression.pdf');
       showToast('✅ PDF exporté avec succès !');
     } catch (error) {
@@ -157,6 +151,11 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
     }
   };
 
+  /* ─── A4 page renderer ─────────────────────────────────────────
+     NOTE: the outer sheet div gets the class `paper-page` so that
+     globals.css keeps it "paper-colored" in both dark and light themes
+     (var(--c-paper)), while the rest of the UI adapts normally.
+  ─────────────────────────────────────────────────────────────── */
   const renderPageLayout = (pageIndex: number, type: 'recto' | 'verso') => {
     const pageLayout = layoutData.layout.filter(
       (item) => item.page === pageIndex,
@@ -172,17 +171,38 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
 
     return (
       <div className="relative mb-8">
-        <div className="absolute -top-6 left-0 bg-gray-900 text-white px-3 py-1 rounded text-xs font-medium">
+        {/* Page label */}
+        <div
+          style={{
+            position: 'absolute',
+            top: -26,
+            left: 0,
+            background: 'var(--bg-elevated)',
+            color: 'var(--text-secondary)',
+            border: '1px solid var(--border-default)',
+            padding: '3px 12px',
+            borderRadius: '6px 6px 0 0',
+            fontSize: 11,
+            fontWeight: 600,
+            fontFamily: 'var(--font-display)',
+            letterSpacing: '0.03em',
+          }}
+        >
           Page {pageIndex + 1} — {type === 'recto' ? 'Recto' : 'Verso'}
         </div>
 
+        {/* A4 sheet — paper-page class keeps it paper-colored regardless of theme */}
         <div
-          className="bg-white shadow-lg relative border border-gray-200"
-          style={{ width: `${pageWidth}px`, height: `${pageHeight}px` }}
+          className="paper-page relative"
+          style={{
+            width: `${pageWidth}px`,
+            height: `${pageHeight}px`,
+            border: '1px solid var(--c-paper-border)',
+          }}
         >
           {/* Printable area guide */}
           <div
-            className="absolute border border-dashed border-gray-400 pointer-events-none"
+            className="absolute border border-dashed pointer-events-none"
             style={{
               top: `${scaledMargins.top}px`,
               left: `${scaledMargins.left}px`,
@@ -200,7 +220,6 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
             const cardW = cardMm.width / scale;
             const cardH = cardMm.height / scale;
 
-            // Verso pages are horizontally mirrored for duplex alignment
             const x =
               type === 'recto'
                 ? item.x / scale
@@ -208,7 +227,6 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
                   scaledMargins.right -
                   cardW -
                   (item.x - margins.left) / scale;
-
             const y = item.y / scale;
             const image =
               type === 'recto' ? recto : getImage(card.versoId, 'verso');
@@ -252,6 +270,7 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
   const totalPages = calculatePages();
   const totalSheets = totalPages * 2;
 
+  /* ── Collapsible section header ── */
   const SectionHeader = ({
     title,
     section,
@@ -261,21 +280,87 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
   }) => (
     <button
       onClick={() => toggleSection(section)}
-      className="flex items-center justify-between w-full text-sm font-semibold text-gray-900 mb-2 hover:text-gray-700"
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        width: '100%',
+        background: 'none',
+        border: 'none',
+        cursor: 'pointer',
+        color: 'var(--text-primary)',
+        fontFamily: 'var(--font-display)',
+        fontSize: 13,
+        fontWeight: 600,
+        letterSpacing: '-0.01em',
+        marginBottom: 10,
+        padding: 0,
+      }}
     >
       <span>{title}</span>
       {expandedSections[section] ? (
-        <ChevronUp className="w-4 h-4" />
+        <ChevronUp size={14} style={{ color: 'var(--text-muted)' }} />
       ) : (
-        <ChevronDown className="w-4 h-4" />
+        <ChevronDown size={14} style={{ color: 'var(--text-muted)' }} />
       )}
     </button>
   );
 
+  /* ── Shared panel style ── */
+  const panel: React.CSSProperties = {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border-default)',
+    borderRadius: 12,
+    padding: 14,
+    transition: 'background 0.25s ease, border-color 0.25s ease',
+  };
+
+  /* ── Shared label style ── */
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: 11,
+    fontWeight: 600,
+    color: 'var(--text-muted)',
+    marginBottom: 5,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    fontFamily: 'var(--font-display)',
+  };
+
+  /* ── Shared input style ── */
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '7px 10px',
+    borderRadius: 7,
+    background: 'var(--bg-elevated)',
+    border: '1px solid var(--border-strong)',
+    color: 'var(--text-primary)',
+    fontSize: 13,
+    fontFamily: 'var(--font-body)',
+    outline: 'none',
+    transition: 'border-color 0.15s, box-shadow 0.15s',
+  };
+
+  /* ── Shared mini button ── */
+  const miniBtn = (active = false): React.CSSProperties => ({
+    flex: 1,
+    padding: '7px 0',
+    borderRadius: 7,
+    background: 'var(--bg-elevated)',
+    border: `1px solid ${active ? 'var(--accent-cyan)' : 'var(--border-default)'}`,
+    color: active ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.15s ease',
+    fontSize: 13,
+  });
+
   const alignmentOptions: {
     value: CardAlignment;
     label: string;
-    Icon: React.FC<{ className?: string }>;
+    Icon: React.FC<{ size?: number }>;
   }[] = [
     { value: 'left', label: 'Gauche', Icon: AlignLeft },
     { value: 'center', label: 'Centre', Icon: AlignCenter },
@@ -283,258 +368,471 @@ export const LayoutTab: React.FC<LayoutTabProps> = ({
   ];
 
   return (
-    <div className="flex h-[calc(100vh-280px)] min-h-[700px] gap-6">
-      {/* Left Sidebar - Controls */}
-      <div className="w-80 flex-shrink-0 space-y-4">
-        {/* Export Button */}
+    <div
+      style={{
+        display: 'flex',
+        height: 'calc(100vh - 280px)',
+        minHeight: 700,
+        gap: 20,
+      }}
+    >
+      {/* ────────── Left sidebar ────────── */}
+      <div
+        style={{
+          width: 288,
+          flexShrink: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+          overflowY: 'auto',
+        }}
+      >
+        {/* Export */}
         <button
           onClick={exportToPDF}
           disabled={isExporting || isCalculating}
-          className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            padding: '11px 16px',
+            borderRadius: 10,
+            background:
+              'linear-gradient(135deg, var(--accent-cyan), var(--accent-blue))',
+            color: '#070b14',
+            fontFamily: 'var(--font-display)',
+            fontWeight: 700,
+            fontSize: 14,
+            border: 'none',
+            cursor: isExporting || isCalculating ? 'not-allowed' : 'pointer',
+            opacity: isExporting || isCalculating ? 0.5 : 1,
+            boxShadow: '0 0 16px rgba(0,212,255,0.25)',
+            transition: 'all 0.2s ease',
+          }}
         >
-          <Printer className="w-5 h-5" />
-          {isExporting ? 'Export en cours...' : 'Exporter en PDF'}
+          <Printer size={16} />
+          {isExporting ? 'Export en cours…' : 'Exporter en PDF'}
         </button>
 
-        {/* Statistics */}
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">
+        {/* Stats */}
+        <div style={panel}>
+          <div
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 12,
+              fontWeight: 700,
+              color: 'var(--text-muted)',
+              letterSpacing: '0.07em',
+              textTransform: 'uppercase',
+              marginBottom: 10,
+            }}
+          >
             Statistiques
-          </h3>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>
-              <span className="block text-xs text-gray-600">Cartes/page</span>
-              <span className="block font-semibold text-gray-900">
-                {layoutData.perPage}
-              </span>
-            </div>
-            <div>
-              <span className="block text-xs text-gray-600">Total cartes</span>
-              <span className="block font-semibold text-gray-900">
-                {getTotalCards(cards)}
-              </span>
-            </div>
-            <div>
-              <span className="block text-xs text-gray-600">Pages</span>
-              <span className="block font-semibold text-gray-900">
-                {totalPages}
-              </span>
-            </div>
-            <div>
-              <span className="block text-xs text-gray-600">Feuilles A4</span>
-              <span className="block font-semibold text-indigo-600">
-                {totalSheets}
-              </span>
-            </div>
+          </div>
+          <div
+            style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}
+          >
+            {[
+              { label: 'Cartes/page', value: layoutData.perPage },
+              { label: 'Total cartes', value: getTotalCards(cards) },
+              { label: 'Pages', value: totalPages },
+              { label: 'Feuilles A4', value: totalSheets, accent: true },
+            ].map(({ label, value, accent }) => (
+              <div
+                key={label}
+                style={{
+                  background: 'var(--bg-elevated)',
+                  borderRadius: 8,
+                  padding: '8px 10px',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--text-muted)',
+                    marginBottom: 2,
+                  }}
+                >
+                  {label}
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: 20,
+                    fontWeight: 800,
+                    color: accent
+                      ? 'var(--accent-cyan)'
+                      : 'var(--text-primary)',
+                    letterSpacing: '-0.03em',
+                  }}
+                >
+                  {value}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Collapsible Sections */}
-        <div className="space-y-3">
-          {/* Alignment */}
-          <div className="bg-white border border-gray-200 rounded-lg p-3">
-            <SectionHeader title="Alignement (recto)" section="alignment" />
-            {expandedSections.alignment && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-1">
-                  {alignmentOptions.map(({ value, label, Icon }) => (
+        {/* Alignment */}
+        <div style={panel}>
+          <SectionHeader title="Alignement (recto)" section="alignment" />
+          {expandedSections.alignment && (
+            <>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3,1fr)',
+                  gap: 6,
+                  marginBottom: 8,
+                }}
+              >
+                {alignmentOptions.map(({ value, label, Icon }) => {
+                  const isActive = alignment === value;
+                  return (
                     <button
                       key={value}
                       onClick={() => setAlignment(value)}
-                      className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg border text-xs font-medium transition-all ${
-                        alignment === value
-                          ? 'bg-indigo-50 border-indigo-500 text-indigo-700 ring-1 ring-indigo-500'
-                          : 'border-gray-300 text-gray-600 hover:bg-gray-50 hover:border-gray-400'
-                      }`}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '8px 6px',
+                        borderRadius: 8,
+                        background: isActive
+                          ? 'rgba(0,212,255,0.1)'
+                          : 'var(--bg-elevated)',
+                        border: `1px solid ${isActive ? 'var(--accent-cyan)' : 'var(--border-default)'}`,
+                        color: isActive
+                          ? 'var(--accent-cyan)'
+                          : 'var(--text-secondary)',
+                        cursor: 'pointer',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        fontFamily: 'var(--font-display)',
+                        transition: 'all 0.15s ease',
+                      }}
                     >
-                      <Icon className="w-4 h-4" />
+                      <Icon size={14} />
                       {label}
                     </button>
-                  ))}
-                </div>
-                <p className="text-xs text-gray-500">
-                  Le verso est automatiquement mis en miroir.
-                </p>
+                  );
+                })}
               </div>
-            )}
-          </div>
+              <p
+                style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}
+              >
+                Le verso est automatiquement mis en miroir.
+              </p>
+            </>
+          )}
+        </div>
 
-          {/* Zoom Controls */}
-          <div className="bg-white border border-gray-200 rounded-lg p-3">
-            <SectionHeader title="Zoom" section="zoom" />
-            {expandedSections.zoom && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setScale(Math.max(0.1, scale + 0.1))}
-                    className="p-2 border border-gray-300 rounded hover:bg-gray-50 transition-colors flex items-center justify-center"
-                  >
-                    <ZoomOut className="w-4 h-4 text-gray-700" />
-                  </button>
-                  <button
-                    onClick={() => setScale(Math.min(2, scale - 0.1))}
-                    className="p-2 border border-gray-300 rounded hover:bg-gray-50 transition-colors flex items-center justify-center"
-                  >
-                    <ZoomIn className="w-4 h-4 text-gray-700" />
-                  </button>
-                </div>
+        {/* Zoom */}
+        <div style={panel}>
+          <SectionHeader title="Zoom" section="zoom" />
+          {expandedSections.zoom && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 6 }}>
                 <button
-                  onClick={fitToContainer}
-                  className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 transition-colors font-medium text-gray-700"
+                  onClick={() => setScale(Math.max(0.1, scale + 0.1))}
+                  style={miniBtn()}
+                  title="Zoom out"
                 >
-                  Ajuster à la largeur
+                  <ZoomOut size={15} />
+                </button>
+                <button
+                  onClick={() => setScale(Math.min(2, scale - 0.1))}
+                  style={miniBtn()}
+                  title="Zoom in"
+                >
+                  <ZoomIn size={15} />
                 </button>
               </div>
-            )}
-          </div>
+              <button
+                onClick={fitToContainer}
+                style={{
+                  ...miniBtn(),
+                  fontSize: 12,
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 600,
+                }}
+              >
+                Ajuster à la largeur
+              </button>
+            </div>
+          )}
+        </div>
 
-          {/* DPI Settings */}
-          <div className="bg-white border border-gray-200 rounded-lg p-3">
-            <SectionHeader title="Résolution" section="dpi" />
-            {expandedSections.dpi && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="1"
-                    min="50"
-                    max="600"
-                    value={dpiInput}
-                    onChange={(e) => setDpiInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') setDpi(parseFloat(dpiInput) || 72);
+        {/* DPI */}
+        <div style={panel}>
+          <SectionHeader title="Résolution" section="dpi" />
+          {expandedSections.dpi && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input
+                  type="number"
+                  step="1"
+                  min="50"
+                  max="600"
+                  value={dpiInput}
+                  onChange={(e) => setDpiInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') setDpi(parseFloat(dpiInput) || 72);
+                  }}
+                  style={{ ...inputStyle, textAlign: 'center', flex: 1 }}
+                  onFocus={(e) => {
+                    (e.target as HTMLInputElement).style.borderColor =
+                      'var(--accent-cyan)';
+                    (e.target as HTMLInputElement).style.boxShadow =
+                      '0 0 0 3px rgba(0,212,255,0.12)';
+                  }}
+                  onBlur={(e) => {
+                    (e.target as HTMLInputElement).style.borderColor =
+                      'var(--border-strong)';
+                    (e.target as HTMLInputElement).style.boxShadow = 'none';
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--text-muted)',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  DPI
+                </span>
+              </div>
+              <button
+                onClick={() => setDpi(parseFloat(dpiInput) || 72)}
+                disabled={isCalculating}
+                style={{
+                  ...miniBtn(),
+                  fontSize: 12,
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 600,
+                  opacity: isCalculating ? 0.5 : 1,
+                  cursor: isCalculating ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {isCalculating ? 'Calcul…' : 'Appliquer'}
+              </button>
+              <p
+                style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}
+              >
+                72 DPI = écran · 300 DPI = impression
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Margins & Spacing */}
+        <div style={panel}>
+          <SectionHeader title="Marges & Espacement" section="margins" />
+          {expandedSections.margins && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Uniform */}
+              <div>
+                <label style={labelStyle}>Marges uniformes (mm)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  placeholder="Ex: 5"
+                  style={inputStyle}
+                  onChange={(e) => {
+                    const v = parseFloat(e.target.value);
+                    if (!isNaN(v) && v >= 0)
+                      setMargins({ top: v, right: v, bottom: v, left: v });
+                  }}
+                  onFocus={(e) => {
+                    (e.target as HTMLInputElement).style.borderColor =
+                      'var(--accent-cyan)';
+                    (e.target as HTMLInputElement).style.boxShadow =
+                      '0 0 0 3px rgba(0,212,255,0.12)';
+                  }}
+                  onBlur={(e) => {
+                    (e.target as HTMLInputElement).style.borderColor =
+                      'var(--border-strong)';
+                    (e.target as HTMLInputElement).style.boxShadow = 'none';
+                  }}
+                />
+              </div>
+
+              {/* Individual */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 8,
+                }}
+              >
+                {(
+                  [
+                    ['top', 'Haut'],
+                    ['right', 'Droite'],
+                    ['bottom', 'Bas'],
+                    ['left', 'Gauche'],
+                  ] as [keyof PageMargins, string][]
+                ).map(([key, label]) => (
+                  <div key={key}>
+                    <label style={labelStyle}>{label}</label>
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={margins[key]}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        setMargins((p) => ({
+                          ...p,
+                          [key]: Math.max(0, v || 0),
+                        }));
+                      }}
+                      style={{ ...inputStyle, textAlign: 'center' }}
+                      onFocus={(e) => {
+                        (e.target as HTMLInputElement).style.borderColor =
+                          'var(--accent-cyan)';
+                        (e.target as HTMLInputElement).style.boxShadow =
+                          '0 0 0 3px rgba(0,212,255,0.12)';
+                      }}
+                      onBlur={(e) => {
+                        (e.target as HTMLInputElement).style.borderColor =
+                          'var(--border-strong)';
+                        (e.target as HTMLInputElement).style.boxShadow = 'none';
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Card spacing */}
+              <div
+                style={{
+                  paddingTop: 10,
+                  borderTop: '1px solid var(--border-subtle)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline',
+                    marginBottom: 8,
+                  }}
+                >
+                  <label style={{ ...labelStyle, margin: 0 }}>
+                    Espacement entre cartes
+                  </label>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontWeight: 700,
+                      fontSize: 13,
+                      color: 'var(--accent-cyan)',
                     }}
-                    className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-center text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <span className="text-xs text-gray-600 font-medium">
-                    DPI (pp/cm)
+                  >
+                    {cardSpacing} mm
                   </span>
                 </div>
-                <button
-                  onClick={() => setDpi(parseFloat(dpiInput) || 72)}
-                  disabled={isCalculating}
-                  className="w-full px-3 py-1.5 text-xs bg-gray-100 border border-gray-300 rounded hover:bg-gray-200 transition-colors font-medium text-gray-900 disabled:opacity-50"
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="0.5"
+                  value={cardSpacing}
+                  onChange={(e) => setCardSpacing(parseFloat(e.target.value))}
+                  style={{
+                    width: '100%',
+                    accentColor: 'var(--accent-cyan)' as string,
+                  }}
+                />
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    fontSize: 10,
+                    color: 'var(--text-muted)',
+                    marginTop: 3,
+                  }}
                 >
-                  {isCalculating ? 'Calcul...' : 'Appliquer'}
-                </button>
-                <p className="text-xs text-gray-500">
-                  72 DPI = écran • 300 DPI = impression
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Margins & Spacing */}
-          <div className="bg-white border border-gray-200 rounded-lg p-3">
-            <SectionHeader title="Marges & Espacement" section="margins" />
-            {expandedSections.margins && (
-              <div className="space-y-3">
-                {/* Uniform Margin */}
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Marges uniformes (mm)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    placeholder="Ex: 5"
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value);
-                      if (!isNaN(value) && value >= 0) {
-                        setMargins({
-                          top: value,
-                          right: value,
-                          bottom: value,
-                          left: value,
-                        });
-                      }
-                    }}
-                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                </div>
-
-                {/* Individual Margins */}
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { key: 'top', label: 'Haut' },
-                    { key: 'right', label: 'Droite' },
-                    { key: 'bottom', label: 'Bas' },
-                    { key: 'left', label: 'Gauche' },
-                  ].map(({ key, label }) => (
-                    <div key={key}>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        {label}
-                      </label>
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        value={margins[key as keyof PageMargins]}
-                        onChange={(e) => {
-                          const value = parseFloat(e.target.value);
-                          setMargins((p) => ({
-                            ...p,
-                            [key]: Math.max(0, value || 0),
-                          }));
-                        }}
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs text-center text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                {/* Card Spacing */}
-                <div className="pt-2 border-t border-gray-200">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Espacement entre cartes :{' '}
-                    <span className="font-semibold text-gray-900">
-                      {cardSpacing} mm
-                    </span>
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="10"
-                    step="0.5"
-                    value={cardSpacing}
-                    onChange={(e) => setCardSpacing(parseFloat(e.target.value))}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                    <span>0 mm</span>
-                    <span>10 mm</span>
-                  </div>
+                  <span>0 mm</span>
+                  <span>10 mm</span>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Right Panel - Preview */}
+      {/* ────────── Right preview panel ────────── */}
       <div
         ref={previewContainerRef}
-        className="flex-1 overflow-y-auto bg-gray-50 border border-gray-200 rounded-lg"
+        style={{
+          flex: 1,
+          overflowY: 'auto',
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border-default)',
+          borderRadius: 14,
+          transition: 'background 0.25s ease, border-color 0.25s ease',
+        }}
       >
-        <div className="sticky top-0 bg-white border-b border-gray-200 z-10 px-6 py-4">
-          <h3 className="text-lg font-semibold text-gray-900">
+        {/* Sticky header */}
+        <div
+          style={{
+            position: 'sticky',
+            top: 0,
+            background: 'var(--bg-card)',
+            borderBottom: '1px solid var(--border-default)',
+            zIndex: 10,
+            padding: '16px 24px',
+            transition: 'background 0.25s ease',
+          }}
+        >
+          <h3
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 16,
+              fontWeight: 700,
+              color: 'var(--text-primary)',
+              margin: 0,
+            }}
+          >
             Aperçu des pages A4
           </h3>
-          <p className="text-sm text-gray-600 mt-1">
-            {totalPages} page{totalPages > 1 ? 's' : ''} • {totalSheets} feuille
+          <p
+            style={{
+              fontSize: 13,
+              color: 'var(--text-muted)',
+              margin: '4px 0 0',
+              fontFamily: 'var(--font-body)',
+            }}
+          >
+            {totalPages} page{totalPages > 1 ? 's' : ''} · {totalSheets} feuille
             {totalSheets > 1 ? 's' : ''}
             {isCalculating && (
-              <span className="text-indigo-600 ml-2">• Calcul en cours...</span>
+              <span style={{ color: 'var(--accent-cyan)', marginLeft: 8 }}>
+                · Calcul en cours…
+              </span>
             )}
           </p>
         </div>
 
-        <div className="p-8">
+        <div style={{ padding: 32 }}>
           {isCalculating ? (
-            <LoadingSpinner message="Calcul de la mise en page..." />
+            <LoadingSpinner message="Calcul de la mise en page…" />
           ) : (
-            <div className="flex flex-col items-center gap-12">
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 48,
+              }}
+            >
               {Array.from({ length: calculatePages() }, (_, i) => (
                 <React.Fragment key={i}>
                   {renderPageLayout(i, 'recto')}

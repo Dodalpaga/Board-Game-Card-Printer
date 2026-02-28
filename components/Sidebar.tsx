@@ -1,9 +1,8 @@
+// components/Sidebar.tsx
 'use client';
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import {
-  LayoutGrid,
   Upload,
   Link2,
   Printer,
@@ -11,17 +10,10 @@ import {
   ChevronRight,
   Layers,
   Github,
-  HelpCircle,
+  LayoutGrid,
 } from 'lucide-react';
-
-interface NavItem {
-  id: string;
-  label: string;
-  sublabel?: string;
-  icon: React.FC<{ className?: string }>;
-  href: string;
-  badge?: number | null;
-}
+import { ThemeToggle } from '@/components/ThemeToggle';
+import type { Theme } from '@/hooks/useTheme';
 
 interface SidebarProps {
   activeTab: string;
@@ -31,47 +23,50 @@ interface SidebarProps {
     cards: number;
     totalCards: number;
   };
+  theme: Theme;
+  onThemeToggle: () => void;
 }
+
+const NAV_ITEMS = [
+  {
+    id: 'upload',
+    label: 'Images',
+    sublabel: 'Rectos & Versos',
+    icon: Upload,
+    badgeKey: 'images',
+  },
+  {
+    id: 'associate',
+    label: 'Associations',
+    sublabel: 'Créer des cartes',
+    icon: Link2,
+    badgeKey: 'cards',
+  },
+  {
+    id: 'layout',
+    label: 'Impression',
+    sublabel: 'Mise en page A4',
+    icon: Printer,
+    badgeKey: 'totalCards',
+  },
+] as const;
+
+type BadgeKey = (typeof NAV_ITEMS)[number]['badgeKey'];
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   onTabChange,
   counts,
+  theme,
+  onThemeToggle,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
 
-  const navItems: NavItem[] = [
-    {
-      id: 'upload',
-      label: 'Images',
-      sublabel: 'Rectos & Versos',
-      icon: Upload,
-      href: '#',
-      badge: counts.images || null,
-    },
-    {
-      id: 'associate',
-      label: 'Associations',
-      sublabel: 'Créer des cartes',
-      icon: Link2,
-      href: '#',
-      badge: counts.cards || null,
-    },
-    {
-      id: 'layout',
-      label: 'Impression',
-      sublabel: 'Mise en page A4',
-      icon: Printer,
-      href: '#',
-      badge: counts.totalCards || null,
-    },
-  ];
-
   return (
     <aside
-      className="sidebar no-print"
+      className="no-print"
       style={{
-        width: collapsed ? '72px' : 'var(--sidebar-w)',
+        width: collapsed ? '68px' : 'var(--sidebar-w)',
         minHeight: '100vh',
         background: 'var(--bg-surface)',
         borderRight: '1px solid var(--border-default)',
@@ -85,34 +80,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
         overflow: 'hidden',
       }}
     >
-      {/* Logo */}
+      {/* ── Logo ── */}
       <div
         style={{
-          padding: collapsed ? '20px 0' : '20px 20px',
+          padding: collapsed ? '20px 0' : '20px',
           borderBottom: '1px solid var(--border-subtle)',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
-          minHeight: '72px',
+          gap: 12,
+          minHeight: 68,
           justifyContent: collapsed ? 'center' : 'flex-start',
         }}
       >
         <div
           style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
+            width: 34,
+            height: 34,
+            borderRadius: 9,
             background:
               'linear-gradient(135deg, var(--accent-cyan), var(--accent-blue))',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             flexShrink: 0,
-            boxShadow: '0 0 16px rgba(0,212,255,0.4)',
+            boxShadow: '0 0 14px rgba(0,212,255,0.35)',
           }}
         >
-          <Layers size={18} color="#070b14" strokeWidth={2.5} />
+          <Layers size={16} color="#070b14" strokeWidth={2.5} />
         </div>
+
         {!collapsed && (
           <div style={{ overflow: 'hidden' }}>
             <div
@@ -143,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
       </div>
 
-      {/* Navigation */}
+      {/* ── Navigation ── */}
       <nav
         style={{
           flex: 1,
@@ -152,7 +148,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
           overflowX: 'hidden',
         }}
       >
-        {/* Section label */}
         {!collapsed && (
           <div
             style={{
@@ -168,9 +163,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        {navItems.map((item, index) => {
+        {NAV_ITEMS.map((item, index) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
+          const badge = counts[item.badgeKey as BadgeKey];
+
           return (
             <button
               key={item.id}
@@ -180,11 +177,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 width: '100%',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 12,
+                gap: 10,
                 padding: collapsed ? '10px 0' : '10px 20px',
                 justifyContent: collapsed ? 'center' : 'flex-start',
                 background: isActive
-                  ? 'linear-gradient(90deg, rgba(0,212,255,0.12) 0%, rgba(0,212,255,0.04) 100%)'
+                  ? 'linear-gradient(90deg, rgba(0,212,255,0.11) 0%, rgba(0,212,255,0.03) 100%)'
                   : 'transparent',
                 borderLeft: isActive
                   ? '2px solid var(--accent-cyan)'
@@ -198,26 +195,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 position: 'relative',
               }}
               onMouseEnter={(e) => {
-                if (!isActive) {
+                if (!isActive)
                   (e.currentTarget as HTMLElement).style.background =
-                    'rgba(255,255,255,0.04)';
-                }
+                    'var(--glass-bg)';
               }}
               onMouseLeave={(e) => {
-                if (!isActive) {
+                if (!isActive)
                   (e.currentTarget as HTMLElement).style.background =
                     'transparent';
-                }
               }}
             >
-              {/* Step number dot */}
+              {/* Step number */}
               {!collapsed && (
                 <div
                   style={{
-                    position: 'absolute',
-                    left: 20,
-                    width: 20,
-                    height: 20,
+                    width: 18,
+                    height: 18,
                     borderRadius: '50%',
                     background: isActive
                       ? 'linear-gradient(135deg, var(--accent-cyan), var(--accent-blue))'
@@ -243,15 +236,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
               )}
 
               <Icon
-                className=""
+                size={17}
                 style={{
-                  width: 18,
-                  height: 18,
                   color: isActive
                     ? 'var(--accent-cyan)'
                     : 'var(--text-secondary)',
                   flexShrink: 0,
-                  marginLeft: collapsed ? 0 : 30,
                   transition: 'color 0.15s',
                 }}
               />
@@ -283,29 +273,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
               )}
 
-              {!collapsed &&
-                item.badge !== null &&
-                item.badge !== undefined && (
-                  <div
-                    style={{
-                      padding: '2px 8px',
-                      borderRadius: 99,
-                      background: isActive
-                        ? 'rgba(0,212,255,0.15)'
-                        : 'rgba(255,255,255,0.06)',
-                      border: `1px solid ${isActive ? 'rgba(0,212,255,0.3)' : 'var(--border-subtle)'}`,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: isActive
-                        ? 'var(--accent-cyan)'
-                        : 'var(--text-muted)',
-                      fontFamily: 'var(--font-display)',
-                      flexShrink: 0,
-                    }}
-                  >
-                    {item.badge}
-                  </div>
-                )}
+              {!collapsed && badge > 0 && (
+                <div
+                  style={{
+                    padding: '2px 7px',
+                    borderRadius: 99,
+                    background: isActive
+                      ? 'rgba(0,212,255,0.14)'
+                      : 'var(--glass-bg)',
+                    border: `1px solid ${isActive ? 'rgba(0,212,255,0.28)' : 'var(--border-subtle)'}`,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: isActive
+                      ? 'var(--accent-cyan)'
+                      : 'var(--text-muted)',
+                    fontFamily: 'var(--font-display)',
+                    flexShrink: 0,
+                  }}
+                >
+                  {badge}
+                </div>
+              )}
             </button>
           );
         })}
@@ -313,13 +301,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Separator */}
         <div
           style={{
-            margin: '16px 20px',
+            margin: '14px 20px',
             height: 1,
             background: 'var(--border-subtle)',
           }}
         />
 
-        {/* Home link */}
+        {/* Home */}
         <Link
           href="/"
           title={collapsed ? 'Accueil' : undefined}
@@ -327,13 +315,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
             width: '100%',
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
-            padding: collapsed ? '10px 0' : '10px 20px',
+            gap: 10,
+            padding: collapsed ? '8px 0' : '8px 20px',
             justifyContent: collapsed ? 'center' : 'flex-start',
             color: 'var(--text-muted)',
             textDecoration: 'none',
+            fontSize: 12,
             transition: 'color 0.15s',
-            fontSize: 13,
           }}
           onMouseEnter={(e) =>
             ((e.currentTarget as HTMLElement).style.color =
@@ -343,13 +331,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ((e.currentTarget as HTMLElement).style.color = 'var(--text-muted)')
           }
         >
-          <LayoutGrid size={16} style={{ flexShrink: 0 }} />
+          <LayoutGrid size={14} style={{ flexShrink: 0 }} />
           {!collapsed && (
             <span
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 500,
-              }}
+              style={{ fontFamily: 'var(--font-display)', fontWeight: 500 }}
             >
               Accueil
             </span>
@@ -357,13 +342,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </Link>
       </nav>
 
-      {/* Footer */}
+      {/* ── Footer (theme + github + collapse) ── */}
       <div
-        style={{
-          borderTop: '1px solid var(--border-subtle)',
-          padding: '12px 0',
-        }}
+        style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: 4 }}
       >
+        {/* Theme toggle */}
+        <ThemeToggle
+          theme={theme}
+          onToggle={onThemeToggle}
+          collapsed={collapsed}
+        />
+
+        {/* GitHub */}
         <a
           href="https://github.com/dodalpaga/Board-Game-Card-Printer"
           target="_blank"
@@ -389,20 +379,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ((e.currentTarget as HTMLElement).style.color = 'var(--text-muted)')
           }
         >
-          <Github size={15} style={{ flexShrink: 0 }} />
+          <Github size={13} style={{ flexShrink: 0 }} />
           {!collapsed && <span>Open Source</span>}
         </a>
 
         {/* Collapse toggle */}
         <button
           onClick={() => setCollapsed((v) => !v)}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Agrandir' : 'Réduire'}
           style={{
             width: '100%',
             display: 'flex',
             alignItems: 'center',
             gap: 10,
-            padding: collapsed ? '8px 0' : '8px 20px',
+            padding: collapsed ? '8px 0 12px' : '8px 20px 12px',
             justifyContent: collapsed ? 'center' : 'flex-start',
             color: 'var(--text-muted)',
             background: 'none',
@@ -410,6 +400,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             cursor: 'pointer',
             fontSize: 12,
             transition: 'color 0.15s',
+            fontFamily: 'var(--font-body)',
           }}
           onMouseEnter={(e) =>
             ((e.currentTarget as HTMLElement).style.color =
@@ -420,10 +411,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }
         >
           {collapsed ? (
-            <ChevronRight size={15} />
+            <ChevronRight size={14} />
           ) : (
             <>
-              <ChevronLeft size={15} style={{ flexShrink: 0 }} />
+              <ChevronLeft size={14} style={{ flexShrink: 0 }} />
               <span>Réduire</span>
             </>
           )}

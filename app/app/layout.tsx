@@ -1,19 +1,7 @@
-'use client';
-import React from 'react';
-
+// app/app/layout.tsx
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  // The sidebar is managed inside the app page itself since it needs
-  // access to tab/counts state. This layout just provides the dark shell.
-  return (
-    <div
-      style={{
-        minHeight: '100vh',
-        background: 'var(--bg-base)',
-        display: 'flex',
-        fontFamily: 'var(--font-body)',
-      }}
-    >
-      {children}
-    </div>
-  );
+  // Intentionally bare — the page component owns the full-screen wrapper
+  // with dynamic theme CSS variables. A background here would sit outside
+  // the themed div and stay dark forever.
+  return <>{children}</>;
 }

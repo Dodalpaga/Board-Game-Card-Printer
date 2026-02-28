@@ -1,25 +1,18 @@
 'use client';
-import React, { useState } from 'react';
-import { Download, Upload as UploadIcon, Layers, Bell } from 'lucide-react';
+import React, { useRef, useEffect } from 'react';
+import { Download, Upload as UploadIcon } from 'lucide-react';
 
-// Import types
 import { ImageFile, Card, PageMargins, TabType } from '@/utils/types';
-
-// Import constants
 import {
   DEFAULT_MARGINS,
   DEFAULT_CARD_SPACING,
   DEFAULT_SCALE,
   DEFAULT_DPI,
 } from '@/utils/constants';
-
-// Import utils
 import { getTotalCards } from '@/utils/utils';
-
-// Import hooks
 import { useCardLayout, CardAlignment } from '@/hooks/useCardLayout';
+import { useTheme, LIGHT_VARS } from '@/hooks/useTheme';
 
-// Import components
 import { UploadTab } from '@/components/UploadTab';
 import { AssociateTab } from '@/components/AssociateTab';
 import { LayoutTab } from '@/components/LayoutTab';
@@ -27,17 +20,44 @@ import { Toast } from '@/components/Toast';
 import { Sidebar } from '@/components/Sidebar';
 
 export default function BoardGameCardManager() {
-  // State
-  const [rectos, setRectos] = useState<ImageFile[]>([]);
-  const [versos, setVersos] = useState<ImageFile[]>([]);
-  const [alignment, setAlignment] = useState<CardAlignment>('left');
-  const [cards, setCards] = useState<Card[]>([]);
-  const [activeTab, setActiveTab] = useState<TabType>('upload');
-  const [margins, setMargins] = useState<PageMargins>(DEFAULT_MARGINS);
-  const [cardSpacing, setCardSpacing] = useState<number>(DEFAULT_CARD_SPACING);
-  const [scale, setScale] = useState<number>(DEFAULT_SCALE);
-  const [dpi, setDpi] = useState<number>(DEFAULT_DPI);
-  const [toasts, setToasts] = useState<string[]>([]);
+  const [rectos, setRectos] = React.useState<ImageFile[]>([]);
+  const [versos, setVersos] = React.useState<ImageFile[]>([]);
+  const [alignment, setAlignment] = React.useState<CardAlignment>('left');
+  const [cards, setCards] = React.useState<Card[]>([]);
+  const [activeTab, setActiveTab] = React.useState<TabType>('upload');
+  const [margins, setMargins] = React.useState<PageMargins>(DEFAULT_MARGINS);
+  const [cardSpacing, setCardSpacing] =
+    React.useState<number>(DEFAULT_CARD_SPACING);
+  const [scale, setScale] = React.useState<number>(DEFAULT_SCALE);
+  const [dpi, setDpi] = React.useState<number>(DEFAULT_DPI);
+  const [toasts, setToasts] = React.useState<string[]>([]);
+
+  const { theme, toggle: toggleTheme } = useTheme();
+
+  /* ─────────────────────────────────────────────────────────────────
+     THE KEY FIX:
+     We apply CSS custom properties DIRECTLY on the wrapper element
+     using style.setProperty(). This is 100% reliable:
+       - No CSS cascade gaps (parent layout, body, html stay unaffected)
+       - No specificity battles
+       - The variables cascade to ALL descendants automatically
+       - Removing them reverts to :root dark defaults instantly
+  ───────────────────────────────────────────────────────────────── */
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    if (theme === 'light') {
+      Object.entries(LIGHT_VARS).forEach(([prop, val]) =>
+        el.style.setProperty(prop, val),
+      );
+    } else {
+      // Remove overrides → fall back to :root dark defaults
+      Object.keys(LIGHT_VARS).forEach((prop) => el.style.removeProperty(prop));
+    }
+  }, [theme]);
 
   const { layoutData, isCalculating } = useCardLayout(
     cards,
@@ -64,22 +84,27 @@ export default function BoardGameCardManager() {
   };
 
   const exportProject = () => {
-    const projectData = {
-      version: '1.0',
-      exportDate: new Date().toISOString(),
-      rectos,
-      versos,
-      cards,
-      margins,
-      cardSpacing,
-      dpi,
-    };
-    const dataStr = JSON.stringify(projectData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `cartes-projet-${new Date().getTime()}.json`;
+    const data = JSON.stringify(
+      {
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        rectos,
+        versos,
+        cards,
+        margins,
+        cardSpacing,
+        dpi,
+      },
+      null,
+      2,
+    );
+    const url = URL.createObjectURL(
+      new Blob([data], { type: 'application/json' }),
+    );
+    const link = Object.assign(document.createElement('a'), {
+      href: url,
+      download: `cartes-projet-${Date.now()}.json`,
+    });
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -91,25 +116,19 @@ export default function BoardGameCardManager() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = (ev) => {
       try {
-        const jsonData = JSON.parse(event.target?.result as string);
-        if (
-          !jsonData.version ||
-          !jsonData.rectos ||
-          !jsonData.versos ||
-          !jsonData.cards
-        ) {
+        const d = JSON.parse(ev.target?.result as string);
+        if (!d.version || !d.rectos || !d.versos || !d.cards) {
           showToast('❌ Fichier invalide');
           return;
         }
-        setRectos(jsonData.rectos || []);
-        setVersos(jsonData.versos || []);
-        setCards(jsonData.cards || []);
-        if (jsonData.margins) setMargins(jsonData.margins);
-        if (jsonData.cardSpacing !== undefined)
-          setCardSpacing(jsonData.cardSpacing);
-        if (jsonData.dpi !== undefined) setDpi(jsonData.dpi);
+        setRectos(d.rectos);
+        setVersos(d.versos);
+        setCards(d.cards);
+        if (d.margins) setMargins(d.margins);
+        if (d.cardSpacing != null) setCardSpacing(d.cardSpacing);
+        if (d.dpi != null) setDpi(d.dpi);
         showToast('✅ Projet importé');
       } catch {
         showToast("❌ Erreur lors de l'import");
@@ -119,20 +138,31 @@ export default function BoardGameCardManager() {
     e.target.value = '';
   };
 
-  const tabLabels: Record<TabType, string> = {
+  const TAB_LABELS: Record<TabType, string> = {
     upload: 'Images',
     associate: 'Associations',
     layout: 'Impression',
   };
-
-  const tabDescriptions: Record<TabType, string> = {
-    upload: `Importez vos rectos et versos · ${rectos.length} recto${rectos.length !== 1 ? 's' : ''}, ${versos.length} verso${versos.length !== 1 ? 's' : ''}`,
-    associate: `Associez les faces de vos cartes · ${cards.length} carte${cards.length !== 1 ? 's' : ''} créée${cards.length !== 1 ? 's' : ''}`,
-    layout: `Configurez et exportez votre PDF · ${getTotalCards(cards)} carte${getTotalCards(cards) !== 1 ? 's' : ''} au total`,
+  const TAB_DESC: Record<TabType, string> = {
+    upload: `${rectos.length} recto${rectos.length !== 1 ? 's' : ''} · ${versos.length} verso${versos.length !== 1 ? 's' : ''}`,
+    associate: `${cards.length} carte${cards.length !== 1 ? 's' : ''} créée${cards.length !== 1 ? 's' : ''}`,
+    layout: `${getTotalCards(cards)} carte${getTotalCards(cards) !== 1 ? 's' : ''} au total`,
   };
 
   return (
-    <div style={{ display: 'flex', width: '100%', minHeight: '100vh' }}>
+    <div
+      ref={wrapperRef}
+      className="app-content"
+      style={{
+        display: 'flex',
+        width: '100%',
+        minHeight: '100vh',
+        background: 'var(--bg-base)',
+        fontFamily: 'var(--font-body)',
+        /* smooth transition when vars are swapped */
+        transition: 'background 0.3s ease',
+      }}
+    >
       {/* Sidebar */}
       <Sidebar
         activeTab={activeTab}
@@ -142,9 +172,11 @@ export default function BoardGameCardManager() {
           cards: cards.length,
           totalCards: getTotalCards(cards),
         }}
+        theme={theme}
+        onThemeToggle={toggleTheme}
       />
 
-      {/* Main content */}
+      {/* Main column */}
       <div
         style={{
           flex: 1,
@@ -154,7 +186,7 @@ export default function BoardGameCardManager() {
           overflow: 'hidden',
         }}
       >
-        {/* Top header bar */}
+        {/* Header bar */}
         <header
           style={{
             background: 'var(--bg-surface)',
@@ -165,9 +197,9 @@ export default function BoardGameCardManager() {
             alignItems: 'center',
             justifyContent: 'space-between',
             flexShrink: 0,
+            transition: 'background 0.3s ease, border-color 0.3s ease',
           }}
         >
-          {/* Page title */}
           <div>
             <h1
               style={{
@@ -177,9 +209,10 @@ export default function BoardGameCardManager() {
                 color: 'var(--text-primary)',
                 letterSpacing: '-0.02em',
                 margin: 0,
+                transition: 'color 0.3s ease',
               }}
             >
-              {tabLabels[activeTab]}
+              {TAB_LABELS[activeTab]}
             </h1>
             <p
               style={{
@@ -187,86 +220,27 @@ export default function BoardGameCardManager() {
                 color: 'var(--text-muted)',
                 margin: 0,
                 marginTop: 2,
+                fontFamily: 'var(--font-body)',
+                transition: 'color 0.3s ease',
               }}
             >
-              {tabDescriptions[activeTab]}
+              {TAB_DESC[activeTab]}
             </p>
           </div>
 
-          {/* Header actions */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button
+            <HeaderBtn
               onClick={exportProject}
               disabled={cards.length === 0}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 7,
-                padding: '7px 14px',
-                borderRadius: 8,
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border-default)',
-                color:
-                  cards.length === 0
-                    ? 'var(--text-muted)'
-                    : 'var(--text-secondary)',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: cards.length === 0 ? 'not-allowed' : 'pointer',
-                transition: 'all 0.15s ease',
-                fontFamily: 'var(--font-body)',
-              }}
-              onMouseEnter={(e) => {
-                if (cards.length > 0) {
-                  (e.currentTarget as HTMLElement).style.borderColor =
-                    'var(--border-strong)';
-                  (e.currentTarget as HTMLElement).style.color =
-                    'var(--text-primary)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor =
-                  'var(--border-default)';
-                (e.currentTarget as HTMLElement).style.color =
-                  cards.length === 0
-                    ? 'var(--text-muted)'
-                    : 'var(--text-secondary)';
-              }}
-            >
-              <Download size={14} />
-              Exporter
-            </button>
-
-            <label
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 7,
-                padding: '7px 14px',
-                borderRadius: 8,
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border-default)',
-                color: 'var(--text-secondary)',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor =
-                  'var(--border-strong)';
-                (e.currentTarget as HTMLElement).style.color =
-                  'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor =
-                  'var(--border-default)';
-                (e.currentTarget as HTMLElement).style.color =
-                  'var(--text-secondary)';
-              }}
-            >
-              <UploadIcon size={14} />
-              Importer
+              icon={<Download size={13} />}
+              label="Exporter"
+            />
+            <label style={{ cursor: 'pointer' }}>
+              <HeaderBtn
+                as="span"
+                icon={<UploadIcon size={13} />}
+                label="Importer"
+              />
               <input
                 type="file"
                 accept=".json"
@@ -284,6 +258,8 @@ export default function BoardGameCardManager() {
             padding: '24px 28px',
             overflowY: 'auto',
             overflowX: 'hidden',
+            background: 'var(--bg-base)',
+            transition: 'background 0.3s ease',
           }}
         >
           {activeTab === 'upload' && (
@@ -329,5 +305,60 @@ export default function BoardGameCardManager() {
 
       <Toast messages={toasts} />
     </div>
+  );
+}
+
+/* ── Small reusable header action button ── */
+function HeaderBtn({
+  onClick,
+  disabled,
+  icon,
+  label,
+  as: Tag = 'button',
+}: {
+  onClick?: () => void;
+  disabled?: boolean;
+  icon: React.ReactNode;
+  label: string;
+  as?: 'button' | 'span';
+}) {
+  return (
+    <Tag
+      {...(Tag === 'button' ? { onClick, disabled } : {})}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '7px 14px',
+        borderRadius: 8,
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border-default)',
+        color: disabled ? 'var(--text-muted)' : 'var(--text-secondary)',
+        fontSize: 13,
+        fontWeight: 500,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'all 0.15s ease',
+        fontFamily: 'var(--font-body)',
+        userSelect: 'none',
+        whiteSpace: 'nowrap',
+      }}
+      onMouseEnter={(e) => {
+        if (disabled) return;
+        const el = e.currentTarget as HTMLElement;
+        el.style.borderColor = 'var(--border-strong)';
+        el.style.color = 'var(--text-primary)';
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLElement;
+        el.style.borderColor = 'var(--border-default)';
+        el.style.color = disabled
+          ? 'var(--text-muted)'
+          : 'var(--text-secondary)';
+      }}
+    >
+      {icon}
+      {label}
+    </Tag>
   );
 }
